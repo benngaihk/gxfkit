@@ -116,6 +116,20 @@ def main(argv: list[str]) -> int:
             readme.write_text(f"{pre}\n{table}\n{post}", encoding="utf-8")
             print(f"\n[injected table into {readme}]", file=sys.stderr)
 
+    # Optional CI gate: fail if any file's parity drops below MIN_PARITY.
+    import os
+
+    floor = os.environ.get("MIN_PARITY")
+    if floor:
+        floor = float(floor)
+        bad = [r for r in rows if r["parity"] != "NA" and float(r["parity"]) < floor]
+        if bad:
+            for r in bad:
+                print(
+                    f"PARITY REGRESSION: {r['file']} {r['parity']}% < {floor}%",
+                    file=sys.stderr,
+                )
+            return 1
     return 0
 
 

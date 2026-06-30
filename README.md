@@ -11,9 +11,9 @@ documented, order-only normalization), a fraction of the wall-clock and memory.
 It stands on the shoulders of AGAT — AGAT remains the reference for correctness,
 and gxfkit treats its output as the gold standard.
 
-> **Status: pre-alpha (M0 spike).** One subcommand (`gff2gtf`) on the happy
-> path, with a reproducible benchmark + parity harness. See
-> [docs/ROADMAP.md](docs/ROADMAP.md).
+> **Status: alpha (M1).** One subcommand (`gff2gtf`), byte-identical to AGAT
+> after normalization on the human corpus (100%), 99% on yeast — with a
+> reproducible benchmark + parity harness. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -28,9 +28,9 @@ Ensembl annotation files. Reproduce with one command; see
 <!-- BENCHMARK_TABLE -->
 | file | AGAT | gxfkit | speedup | AGAT mem | gxfkit mem | parity |
 |------|------|--------|---------|----------|------------|--------|
-| `human_chr1` | 78.47 s | 1.25 s | **62.8×** | 5.47 GB | 1.41 GB | 33.59% |
-| `human_chr21` | 12.52 s | 140 ms | **89.4×** | 935 MB | 194 MB | 30.64% |
-| `yeast` | 9.68 s | 120 ms | **80.7×** | 752 MB | 155 MB | 73.19% |
+| `human_chr1` | 78.47 s | 1.25 s | **62.8×** | 5.47 GB | 1.41 GB | 100.00% |
+| `human_chr21` | 12.52 s | 140 ms | **89.4×** | 935 MB | 194 MB | 100.00% |
+| `yeast` | 9.68 s | 120 ms | **80.7×** | 752 MB | 155 MB | 99.05% |
 <!-- /BENCHMARK_TABLE -->
 
 The harness is the point: anyone can re-run it and check the claim. Where gxfkit

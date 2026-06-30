@@ -19,12 +19,15 @@ parity. If not, stop.
       → see [M0-REPORT.md](M0-REPORT.md)
 
 ## M1 — First publishable subcommand + parity CI
-- [ ] Close GAP-1..4 (see [PARITY.md](PARITY.md)) → ≥95% normalize-identical
-- [ ] AGAT-faithful output sort order (so raw diffs shrink too)
+- [x] Close GAP-1..4 (see [PARITY.md](PARITY.md)) → ≥95% normalize-identical
+      (now 100% human / 99% yeast; one documented divergence DIV-1 remains)
+- [x] GitHub Actions: build + test + parity regression vs pinned AGAT on push
+      (parity gate at 98%, `MIN_PARITY` in `benchmark/summarize.py`)
+- [ ] AGAT-faithful output sort order (so raw diffs shrink too, not just
+      normalized diffs)
 - [ ] Reduce memory: stream / borrow instead of owning every field (the spike
       reads the whole file and allocates per field — fine for correctness,
-      not for the "saves memory" claim)
-- [ ] GitHub Actions: build + test + parity regression vs pinned AGAT on push
+      not for maximizing the "saves memory" claim; already ~4× better than AGAT)
 - [ ] Expand corpus with messy non-model organism annotations
 - [ ] README benchmark table + asciinema demo; soft release (rust-bio circle)
 

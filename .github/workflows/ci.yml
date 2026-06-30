@@ -23,25 +23,29 @@ jobs:
   parity:
     name: parity vs AGAT (gold standard)
     runs-on: ubuntu-latest
-    # The parity job runs both tools in the benchmark container and diffs the
-    # output through the normalizer. It is the project's correctness regression
-    # gate. Allowed to fail until M1 closes the documented gaps.
-    continue-on-error: true
+    # Correctness regression gate: the benchmark container produces AGAT (gold)
+    # and gxfkit GTF, then summarize.py diffs them through the normalizer and
+    # fails the build if any file's parity drops below MIN_PARITY.
     steps:
       - uses: actions/checkout@v4
       - name: Download corpus
         run: bash corpus/download.sh
       - name: Build benchmark image
         run: docker build -f benchmark/Dockerfile -t gxfkit-bench .
-      - name: Run parity (no timing)
+      - name: Produce AGAT + gxfkit outputs
         run: |
+          mkdir -p benchmark/results
           docker run --rm \
             -v "$PWD/corpus/raw:/corpus:ro" \
-            -v "$PWD/tests/parity:/parity:ro" \
             -v "$PWD/benchmark/results:/work/results" \
             -e RUNS=1 \
             gxfkit-bench
+      - name: Check parity (gate)
+        env:
+          MIN_PARITY: "98"
+        run: python benchmark/summarize.py benchmark/results tests/parity/normalize.py
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: parity-results
-          path: benchmark/results/*.parity.txt
+          path: benchmark/results/summary.tsv

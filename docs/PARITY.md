@@ -17,58 +17,44 @@ This file is the project's honesty ledger. Each divergence is either:
 
 ---
 
-## Current status (M0 spike)
+## Current status (M1)
 
 `gff2gtf`, post-normalization parity on the pinned corpus:
 
-| file        | lines  | parity | dominant residual                       |
-|-------------|--------|--------|-----------------------------------------|
-| yeast       | ~28.7k | ~73%   | GAP-1 (synthesized exon IDs)            |
-| human_chr21 | ~40k   | ~31%   | GAP-1, GAP-2, GAP-3                     |
-| human_chr1  | ~316k  | ~34%   | GAP-1, GAP-2, GAP-3                     |
+| file        | lines  | parity   | residual                            |
+|-------------|--------|----------|-------------------------------------|
+| human_chr1  | ~316k  | **100.00%** | none                             |
+| human_chr21 | ~40k   | **100.00%** | none                             |
+| yeast       | ~28.7k | **99.05%**  | DIV-1 (transposable_element remodel) |
 
-These are an honest *starting* baseline: the spike implements the GFF→GTF core
-(hierarchy resolution, gene_id/transcript_id derivation incl. Ensembl prefix
-stripping, attribute carry-over). The remaining gaps are all **systematic and
-enumerated below** — closing them is the M1 work item, and none requires new
-ideas, only faithfully reproducing AGAT's deterministic feature-mangling rules.
+Both human files are **byte-identical to AGAT after normalization**. The single
+remaining yeast residual is one documented, deliberately-deferred AGAT quirk
+(below). M1's ≥95% parity target is met with margin.
+
+GAP-1..4 from the M0 spike are now **closed** — see the rules in `convert.rs`
+(`assign_effective_ids`, `write_attr`):
+
+- exon ID synthesis from `exon_id`, with AGAT's global-uniqueness rule (a shared
+  exon_id keeps the name on first use, gets `agat-exon-<N>` thereafter);
+- `agat-<lowercased_type>-<N>` per-type counter for features with no usable ID;
+- multi-value (comma list) attributes serialized as `key "v1","v2"` — this also
+  resolved the chromosome `Alias` difference (it was the same rendering issue).
 
 ---
 
-## Divergences
+## Open divergences
 
-### GAP-1 — AGAT synthesizes a missing `ID` on child features
-**Where:** `exon` (and any feature) lines whose source GFF3 has no `ID=`.
-**AGAT:** adds `ID "<value>"`, taking the value from `exon_id` / `Name` (for
-exons) so every emitted feature has an `ID`.
-**gxfkit (now):** omits `ID` when the source had none.
-**Class:** GAP. **Plan:** replicate AGAT's ID-synthesis: for a child feature
-lacking `ID`, derive it (exon → `exon_id`, else `<transcript_id>-<type><rank>`).
-This single rule accounts for the bulk of the residual on every file.
-
-### GAP-2 — AGAT's `agat-<type>-<N>` counter for ID-less standalone features
-**Where:** `biological_region` and similar features with neither `ID` nor parent.
-**AGAT:** assigns `gene_id "agat-biological_region-1"; ID "agat-biological_region-1"`,
-an incrementing per-type counter.
-**gxfkit (now):** uses a coordinate-based synthetic id, e.g.
-`gene_id "21:5020208-5023177"`.
-**Class:** GAP. **Plan:** implement AGAT's `agat-<type>-<counter>` scheme
-(counter is per feature-type, assigned in document order).
-
-### GAP-3 — multi-value `tag` handling
-**Where:** transcript features with `tag=basic,Ensembl_canonical`.
-**AGAT:** appears to split/relocate multi-value `tag` attributes (single-value
-`tag` is preserved as-is — see yeast `tag "Ensembl_canonical"`).
-**gxfkit (now):** carries the raw comma-joined value `tag "basic,Ensembl_canonical"`.
-**Class:** GAP (needs confirmation of AGAT's exact rule). **Plan:** characterize
-on more samples, then match (likely emit one `tag "x"` per value).
-
-### GAP-4 — `Alias` dropped on the top-level region line
-**Where:** the `chromosome` feature.
-**AGAT:** emits only `gene_id` + `ID` (drops `Alias`).
-**gxfkit (now):** carries `Alias` through.
-**Class:** GAP (low impact: 1 line/file). **Plan:** confirm whether AGAT drops
-`Alias` generally or only on top-level features, then match.
+### DIV-1 — `transposable_element` / `transposable_element_gene` remodeling
+**Where:** yeast Ty retrotransposon loci (`transposable_element_gene` →
+`transposable_element` → `exon`); ~273 lines (0.95% of yeast).
+**AGAT:** remodels the locus — reclassifies `transposable_element` as a
+transcript (`RNA`) under a *synthesized* gene `agat-transposable_element-<N>`,
+reparenting the children to it.
+**gxfkit (now):** carries the original feature types and hierarchy through.
+**Class:** DIV (deferred). **Why deferred:** this is AGAT's bespoke,
+`feature_levels.yaml`-driven feature reclassification — high complexity, tiny
+footprint, and arguably the original typing is more faithful to the input.
+**Plan:** revisit if a real consumer needs it; otherwise document and move on.
 
 ---
 
