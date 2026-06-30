@@ -5,7 +5,7 @@
 //! swapping `agat_convert_sp_gff2gtf.pl` for `gxfkit gff2gtf` is near-zero cost.
 
 use std::fs::File;
-use std::io::{self, BufReader, BufWriter, Read, Write};
+use std::io::{self, BufReader, BufWriter, Write};
 use std::process::ExitCode;
 
 const USAGE: &str = "\
@@ -92,19 +92,21 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
         }
     }
 
-    // Read input fully (spike: files fit in memory).
-    let mut src = String::new();
-    match input {
+    // Stream the input through the reader (gff2gtf needs the whole feature graph,
+    // so records are still collected, but we don't slurp the file into a String
+    // first — that would reject any non-UTF-8 byte).
+    let to_err = |e: gxfkit_core::reader::ParseError| {
+        io::Error::new(io::ErrorKind::InvalidData, e.to_string())
+    };
+    let records = match input {
         Some(path) => {
-            BufReader::new(File::open(&path)?).read_to_string(&mut src)?;
+            gxfkit_core::reader::read_all(BufReader::new(File::open(&path)?)).map_err(to_err)?
         }
         None => {
-            io::stdin().read_to_string(&mut src)?;
+            let stdin = io::stdin();
+            gxfkit_core::reader::read_all(stdin.lock()).map_err(to_err)?
         }
-    }
-
-    let records = gxfkit_core::reader::read_all(io::Cursor::new(src.as_bytes()))
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+    };
 
     let mut out: Box<dyn Write> = match output {
         Some(path) => Box::new(BufWriter::new(File::create(&path)?)),

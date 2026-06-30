@@ -45,7 +45,7 @@ impl From<std::io::Error> for ParseError {
 pub struct GffReader<R: BufRead> {
     inner: R,
     line_no: usize,
-    buf: String,
+    buf: Vec<u8>,
     in_fasta: bool,
 }
 
@@ -54,21 +54,26 @@ impl<R: BufRead> GffReader<R> {
         Self {
             inner,
             line_no: 0,
-            buf: String::new(),
+            buf: Vec::new(),
             in_fasta: false,
         }
     }
 
     /// Returns the next record, `None` at EOF, or a parse error.
+    ///
+    /// Lines are read as raw bytes and decoded with `from_utf8_lossy`, so a stray
+    /// non-UTF-8 byte (Latin-1 description text, etc.) is tolerated rather than
+    /// aborting the whole conversion.
     pub fn next_record(&mut self) -> Result<Option<Record>, ParseError> {
         loop {
             self.buf.clear();
-            let n = self.inner.read_line(&mut self.buf)?;
+            let n = self.inner.read_until(b'\n', &mut self.buf)?;
             if n == 0 {
                 return Ok(None);
             }
             self.line_no += 1;
-            let line = self.buf.trim_end_matches(['\n', '\r']);
+            let raw = String::from_utf8_lossy(&self.buf);
+            let line = raw.trim_end_matches(['\n', '\r']);
 
             if self.in_fasta {
                 continue;
@@ -76,8 +81,9 @@ impl<R: BufRead> GffReader<R> {
             if line.is_empty() {
                 continue;
             }
-            if let Some(rest) = line.strip_prefix('#') {
-                if rest.starts_with("#FASTA") || line == "##FASTA" {
+            if line.starts_with('#') {
+                // The FASTA directive may carry trailing whitespace.
+                if line.trim_end() == "##FASTA" {
                     self.in_fasta = true;
                 }
                 continue;
@@ -93,32 +99,23 @@ impl<R: BufRead> GffReader<R> {
     }
 
     fn parse_line(&self, line: &str) -> Result<Record, ParseError> {
-        let mut cols = line.splitn(9, '\t');
-        let seqid = cols.next().unwrap_or_default();
-        let source = next_col(&mut cols)?;
-        let feature_type = next_col(&mut cols)?;
-        let start_s = next_col(&mut cols)?;
-        let end_s = next_col(&mut cols)?;
-        let score = next_col(&mut cols)?;
-        let strand_s = next_col(&mut cols)?;
-        let phase = next_col(&mut cols)?;
-        let attrs = match cols.next() {
-            Some(a) => a,
-            None => {
-                return Err(ParseError::BadColumnCount {
-                    line_no: self.line_no,
-                    found: 8,
-                })
-            }
-        };
+        // The 9th (attribute) column may itself contain tabs, so cap the split at
+        // 9. Anything fewer than 9 columns is malformed.
+        let cols: Vec<&str> = line.splitn(9, '\t').collect();
+        if cols.len() < 9 {
+            return Err(ParseError::BadColumnCount {
+                line_no: self.line_no,
+                found: cols.len(),
+            });
+        }
 
-        let start = start_s
+        let start = cols[3]
             .parse::<u64>()
             .map_err(|_| ParseError::BadCoordinate {
                 line_no: self.line_no,
                 field: "start",
             })?;
-        let end = end_s
+        let end = cols[4]
             .parse::<u64>()
             .map_err(|_| ParseError::BadCoordinate {
                 line_no: self.line_no,
@@ -126,28 +123,22 @@ impl<R: BufRead> GffReader<R> {
             })?;
 
         Ok(Record {
-            seqid: seqid.to_string(),
-            source: source.to_string(),
-            feature_type: feature_type.to_string(),
+            seqid: cols[0].to_string(),
+            source: cols[1].to_string(),
+            feature_type: cols[2].to_string(),
             start,
             end,
-            score: score.to_string(),
-            strand: Strand::parse(strand_s),
-            phase: phase.to_string(),
-            attributes: Attributes::parse_gff3(attrs),
+            score: cols[5].to_string(),
+            strand: Strand::parse(cols[6]),
+            phase: cols[7].to_string(),
+            attributes: Attributes::parse_gff3(cols[8]),
         })
     }
 }
 
-fn next_col<'a, I: Iterator<Item = &'a str>>(it: &mut I) -> Result<&'a str, ParseError> {
-    it.next().ok_or(ParseError::BadColumnCount {
-        line_no: 0,
-        found: 0,
-    })
-}
-
-/// Read every record into a `Vec`. Convenient for the spike where files fit in
-/// memory; streaming callers should use `next_record` directly.
+/// Read every record into a `Vec`. Convenient when the whole annotation is
+/// needed at once (gff2gtf resolves the full feature graph); streaming callers
+/// should use `next_record` directly.
 pub fn read_all<R: BufRead>(reader: R) -> Result<Vec<Record>, ParseError> {
     let mut r = GffReader::new(reader);
     let mut out = Vec::new();
@@ -177,5 +168,28 @@ ACGT
         assert_eq!(recs.len(), 2);
         assert_eq!(recs[0].id(), Some("g1"));
         assert_eq!(recs[1].parent(), Some("g1"));
+    }
+
+    #[test]
+    fn tolerates_non_utf8_bytes() {
+        // 0xE9 is Latin-1 'é' — invalid UTF-8. Must not abort; lossy-decoded.
+        let mut data: Vec<u8> = b"chr1\tsrc\tgene\t1\t100\t.\t+\t.\tID=g1;Note=caf".to_vec();
+        data.push(0xE9);
+        data.push(b'\n');
+        let recs = read_all(Cursor::new(data)).unwrap();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].id(), Some("g1"));
+    }
+
+    #[test]
+    fn too_few_columns_reports_line_and_count() {
+        let data = b"chr1\tsrc\tgene\t1\t100\n".to_vec();
+        match read_all(Cursor::new(data)) {
+            Err(ParseError::BadColumnCount { line_no, found }) => {
+                assert_eq!(line_no, 1);
+                assert_eq!(found, 5);
+            }
+            other => panic!("expected BadColumnCount, got {other:?}"),
+        }
     }
 }
