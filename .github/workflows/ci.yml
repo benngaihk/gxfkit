@@ -28,8 +28,8 @@ jobs:
     # fails the build if any file's parity drops below MIN_PARITY.
     steps:
       - uses: actions/checkout@v4
-      - name: Download corpus
-        run: bash corpus/download.sh
+      - name: Download core corpus (parity-guaranteed Ensembl files)
+        run: bash corpus/download.sh core
       - name: Build benchmark image
         run: docker build -f benchmark/Dockerfile -t gxfkit-bench .
       - name: Produce AGAT + gxfkit outputs

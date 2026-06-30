@@ -19,17 +19,24 @@ This file is the project's honesty ledger. Each divergence is either:
 
 ## Current status (M1)
 
-`gff2gtf`, post-normalization parity on the pinned corpus:
+`gff2gtf`, post-normalization parity. The corpus has two tiers: a **core** set
+(Ensembl, where gxfkit guarantees parity — enforced by CI at ≥98%) and an
+**extended** stress set (different conventions, exercising known divergences).
 
-| file        | lines  | parity   | residual                            |
-|-------------|--------|----------|-------------------------------------|
-| human_chr1  | ~316k  | **100.00%** | none                             |
-| human_chr21 | ~40k   | **100.00%** | none                             |
-| yeast       | ~28.7k | **99.05%**  | DIV-1 (transposable_element remodel) |
+| tier     | file              | lines  | parity      | dominant residual              |
+|----------|-------------------|--------|-------------|--------------------------------|
+| core     | human_chr1        | ~316k  | **100.00%** | none                           |
+| core     | human_chr21       | ~40k   | **100.00%** | none                           |
+| core     | yeast             | ~28.7k | **99.05%**  | DIV-1 (transposable_element)   |
+| extended | drosophila        | ~506k  | ~60%        | DIV-1 (TE loci, at scale)      |
+| extended | ecoli_refseq      | ~18k   | ~4%         | DIV-3 (NCBI hierarchy)         |
+| extended | arabidopsis_refseq| ~710k  | (NCBI)      | DIV-3                          |
 
-Both human files are **byte-identical to AGAT after normalization**. The single
-remaining yeast residual is one documented, deliberately-deferred AGAT quirk
-(below). M1's ≥95% parity target is met with margin.
+Core Ensembl files are **byte-identical to AGAT after normalization** (yeast bar
+one documented quirk). The extended set deliberately surfaces the two big open
+divergences — DIV-1 (transposable_element remodeling) and **DIV-3 (NCBI RefSeq
+hierarchy completion = AGAT's `gxf2gxf` standardization)** — which are the
+roadmap's next frontier, not regressions. M1's ≥95% target is met on core.
 
 GAP-1..4 from the M0 spike are now **closed** — see the rules in `convert.rs`
 (`assign_effective_ids`, `write_attr`):

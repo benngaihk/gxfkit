@@ -2,17 +2,25 @@
 # Download a small, reproducible, public GFF3 corpus for parity + benchmarking.
 #
 # Files are pinned to a specific Ensembl release so results are reproducible.
-# Large/derived files are git-ignored (see corpus/.gitignore); only this script
-# and the manifest are tracked.
+# Large/derived files are git-ignored; only this script is tracked.
 #
-# Usage:  bash corpus/download.sh
+# Usage:
+#   bash corpus/download.sh          # everything (local stress testing)
+#   bash corpus/download.sh core     # only the CI-gated, parity-guaranteed set
+#
+# The "core" set is the Ensembl files gxfkit reaches full parity on (used by the
+# CI parity gate). The rest are larger / different-convention stress files
+# (NCBI RefSeq, etc.) that exercise known divergences — see docs/PARITY.md.
 set -euo pipefail
 
+WHICH="${1:-all}"
 REL=110
 BASE="https://ftp.ensembl.org/pub/release-${REL}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RAW="$DIR/raw"
 mkdir -p "$RAW"
+
+CORE=" yeast human_chr21 "  # space-delimited membership test
 
 # tier|name|url
 # A spread of providers/conventions on purpose: Ensembl (gene:/transcript: ID
@@ -31,6 +39,9 @@ ENTRIES=(
 
 for e in "${ENTRIES[@]}"; do
   IFS='|' read -r tier name url <<<"$e"
+  if [[ "$WHICH" == "core" && "$CORE" != *" $name "* ]]; then
+    continue
+  fi
   gz="$RAW/${name}.gff3.gz"
   out="$RAW/${name}.gff3"
   if [[ -f "$out" ]]; then
