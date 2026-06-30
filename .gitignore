@@ -17,3 +17,6 @@
 Thumbs.db
 .DS_Store
 *.swp
+
+# Local runtime / scheduler state
+.claude/
