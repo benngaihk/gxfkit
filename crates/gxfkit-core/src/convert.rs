@@ -8,9 +8,13 @@
 //! GTF lists. This reaches byte-parity with AGAT (after normalization) on the
 //! human corpus; see docs/PARITY.md for the rules and the one open divergence.
 //!
+//! Output is emitted in AGAT's tree-traversal order (see [`emission_order`]) so
+//! it also reaches raw byte-parity on most lines, not just normalized parity.
+//!
 //! Known not-yet-handled cases (see docs/PARITY.md):
 //!   * AGAT's `transposable_element` remodeling (DIV-1),
-//!   * AGAT-faithful output sort order (parity harness is order-insensitive),
+//!   * a few AGAT internal-clustering orderings (raw-diff only; normalized OK),
+//!   * NCBI-RefSeq-style hierarchy completion (synthesize missing mRNA),
 //!   * multi-parent features (we take the first parent).
 
 use crate::model::{Record, Strand};
@@ -196,17 +200,23 @@ fn write_gtf_line(
     if let Some(tx) = transcript_id {
         write!(out, " transcript_id \"{}\";", tx)?;
     }
-    // If the source feature had no ID, AGAT emits the one it synthesized.
+    // Remaining attributes follow AGAT's order: ASCII-ascending by key (so
+    // uppercase keys like ID/Name/Parent precede lowercase ones). The
+    // synthesized ID (when the source had none) joins this set so it sorts into
+    // the same position AGAT puts it. We drop any source gene_id/transcript_id
+    // since we emit our own canonical pair above.
+    let mut rest: Vec<(&str, &str)> = Vec::with_capacity(r.attributes.pairs.len() + 1);
     if eff.synthesized {
-        write!(out, " ID \"{}\";", eff.id)?;
+        rest.push(("ID", eff.id.as_str()));
     }
     for (k, v) in &r.attributes.pairs {
-        // Some sources (e.g. Ensembl) already carry gene_id/transcript_id in the
-        // GFF attributes. We emit our own canonical pair above, so drop the
-        // originals to avoid duplicates — this matches AGAT.
         if k == "gene_id" || k == "transcript_id" {
             continue;
         }
+        rest.push((k.as_str(), v.as_str()));
+    }
+    rest.sort_by(|a, b| a.0.cmp(b.0)); // stable: ties keep source order
+    for (k, v) in rest {
         write_attr(out, k, v)?;
     }
     out.write_all(b"\n")
@@ -226,14 +236,114 @@ fn write_attr(out: &mut impl Write, key: &str, value: &str) -> std::io::Result<(
     out.write_all(b";")
 }
 
+/// Output rank of a level3 feature type within a transcript (AGAT order).
+fn type_rank(feature_type: &str) -> u8 {
+    match feature_type.to_ascii_lowercase().as_str() {
+        "exon" => 0,
+        "cds" => 1,
+        "five_prime_utr" => 2,
+        "three_prime_utr" => 3,
+        _ => 4,
+    }
+}
+
+/// Level-1 (root) feature category, which AGAT emits in this bucket order within
+/// each seqid: top-level regions first, then biological_region, then gene trees.
+fn level1_category(feature_type: &str) -> u8 {
+    match feature_type.to_ascii_lowercase().as_str() {
+        "chromosome" | "contig" | "scaffold" | "supercontig" | "region" => 0,
+        "biological_region" => 1,
+        _ => 2,
+    }
+}
+
+/// Compute the order in which records should be emitted to match AGAT's output.
+///
+/// AGAT emits a *tree traversal*, not a flat sort: per seqid (lexicographic),
+/// root features are bucketed by [`level1_category`] then `(start, end)`; each
+/// root is followed immediately by its subtree, with a node's children ordered
+/// by `(type_rank, start, end)` (so a gene's transcripts sort by position, and a
+/// transcript's children come out exon → CDS → 5'UTR → 3'UTR). A few AGAT
+/// internal-clustering quirks (the exact chromosome slot, some nested-gene
+/// orderings) are not reproduced by this pure key — see docs/PARITY.md.
+fn emission_order(
+    records: &[Record],
+    by_id: &HashMap<&str, usize>,
+    eff: &[EffectiveId],
+) -> Vec<usize> {
+    let n = records.len();
+    let mut children: Vec<Vec<usize>> = vec![Vec::new(); n];
+    let mut roots: Vec<usize> = Vec::new();
+    for (i, r) in records.iter().enumerate() {
+        match r.parent().and_then(|p| by_id.get(p)) {
+            Some(&p) if p != i => children[p].push(i),
+            _ => roots.push(i),
+        }
+    }
+    // Siblings: (type_rank, start, end), tie-broken by effective ID — AGAT orders
+    // same-coordinate features (e.g. two transcripts spanning the same range) by
+    // their ID lexicographically.
+    for kids in &mut children {
+        kids.sort_by(|&a, &b| {
+            type_rank(&records[a].feature_type)
+                .cmp(&type_rank(&records[b].feature_type))
+                .then(records[a].start.cmp(&records[b].start))
+                .then(records[a].end.cmp(&records[b].end))
+                .then(eff[a].id.cmp(&eff[b].id))
+        });
+    }
+    roots.sort_by(|&a, &b| {
+        records[a]
+            .seqid
+            .cmp(&records[b].seqid)
+            .then(
+                level1_category(&records[a].feature_type)
+                    .cmp(&level1_category(&records[b].feature_type)),
+            )
+            .then(records[a].start.cmp(&records[b].start))
+            .then(records[a].end.cmp(&records[b].end))
+            .then(eff[a].id.cmp(&eff[b].id))
+    });
+
+    // Pre-order DFS via explicit stack (avoids recursion depth limits on
+    // pathologically deep nesting). Children are pushed reversed so the
+    // smallest-key child is processed first.
+    let mut order = Vec::with_capacity(n);
+    let mut emitted = vec![false; n];
+    let mut stack: Vec<usize> = roots.iter().rev().copied().collect();
+    while let Some(i) = stack.pop() {
+        if emitted[i] {
+            continue;
+        }
+        emitted[i] = true;
+        order.push(i);
+        for &c in children[i].iter().rev() {
+            if !emitted[c] {
+                stack.push(c);
+            }
+        }
+    }
+    // Any record not reachable from a root (e.g. a Parent cycle) is emitted last
+    // in input order, so every line appears exactly once.
+    for (i, &done) in emitted.iter().enumerate() {
+        if !done {
+            order.push(i);
+        }
+    }
+    order
+}
+
 /// Convert a slice of GFF3 records to GTF, writing to `out`.
 ///
-/// Output order matches input order for the spike; the parity harness applies a
-/// normaliser that is order-insensitive, and AGAT-faithful sorting is an M1 task.
+/// Records are emitted in AGAT's tree-traversal order (see [`emission_order`]);
+/// the per-record content is independent of order, so this reaches AGAT
+/// byte-parity (modulo a few documented clustering quirks) while the parity
+/// harness — which is order-insensitive — stays unaffected.
 pub fn gff3_to_gtf(records: &[Record], out: &mut impl Write) -> std::io::Result<()> {
     let by_id = index_by_id(records);
     let eff = assign_effective_ids(records);
-    for (i, r) in records.iter().enumerate() {
+    for &i in &emission_order(records, &by_id, &eff) {
+        let r = &records[i];
         let chain = ancestry(records, &by_id, i);
         let (gene_id, transcript_id) = resolve_ids(records, &eff, &chain);
         write_gtf_line(out, r, &gene_id, transcript_id.as_deref(), &eff[i])?;
@@ -327,12 +437,18 @@ chr1\tsrc\texon\t1\t50\t.\t+\t.\tParent=transcript:t1;exon_id=SHARED
 chr1\tsrc\texon\t1\t50\t.\t+\t.\tParent=transcript:t2;exon_id=SHARED
 ";
         let gtf = convert(gff);
-        let lines: Vec<&str> = gtf.lines().collect();
-        assert!(lines[3].contains("ID \"SHARED\";"), "first: {}", lines[3]);
+        // Output is in tree order, so locate the two exon lines by content.
+        let exons: Vec<&str> = gtf.lines().filter(|l| l.contains("\texon\t")).collect();
+        assert_eq!(exons.len(), 2, "{gtf}");
+        // The first-in-document exon (under t1) keeps SHARED; the later one (t2)
+        // gets the agat counter. Both must appear exactly once.
         assert!(
-            lines[4].contains("ID \"agat-exon-1\";"),
-            "second: {}",
-            lines[4]
+            exons.iter().any(|l| l.contains("ID \"SHARED\";")),
+            "expected a SHARED exon: {gtf}"
+        );
+        assert!(
+            exons.iter().any(|l| l.contains("ID \"agat-exon-1\";")),
+            "expected an agat-exon-1 exon: {gtf}"
         );
     }
 
@@ -341,6 +457,34 @@ chr1\tsrc\texon\t1\t50\t.\t+\t.\tParent=transcript:t2;exon_id=SHARED
         let gff = "chr1\t.\tfive_prime_UTR\t1\t9\t.\t+\t.\tParent=transcript:t1\n";
         let gtf = convert(gff);
         assert!(gtf.contains("ID \"agat-five_prime_utr-1\";"), "{gtf}");
+    }
+
+    #[test]
+    fn emits_in_agat_tree_order() {
+        // Input deliberately out of order; expect gene -> transcript -> exon,CDS
+        // (type rank), with the topfeature first and biological_region before genes.
+        let gff = "\
+chr1\tsrc\tCDS\t1\t50\t.\t+\t0\tID=c1;Parent=transcript:t1
+chr1\tsrc\texon\t1\t50\t.\t+\t.\tID=e1;Parent=transcript:t1
+chr1\tsrc\tmRNA\t1\t100\t.\t+\t.\tID=transcript:t1;Parent=gene:g1
+chr1\tsrc\tgene\t1\t100\t.\t+\t.\tID=gene:g1
+chr1\t.\tbiological_region\t1\t9\t.\t+\t.\tfoo=bar
+chr1\tsrc\tchromosome\t1\t1000\t.\t.\t.\tID=chromosome:1
+";
+        let gtf = convert(gff);
+        let types: Vec<&str> = gtf.lines().map(|l| l.split('\t').nth(2).unwrap()).collect();
+        assert_eq!(
+            types,
+            vec![
+                "chromosome",
+                "biological_region",
+                "gene",
+                "mRNA",
+                "exon",
+                "CDS"
+            ],
+            "got: {types:?}\n{gtf}"
+        );
     }
 
     #[test]

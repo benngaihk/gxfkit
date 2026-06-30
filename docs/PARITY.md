@@ -42,6 +42,23 @@ GAP-1..4 from the M0 spike are now **closed** — see the rules in `convert.rs`
 
 ---
 
+## Output ordering & raw byte-parity
+
+Beyond *normalized* parity, gxfkit emits features in AGAT's **tree-traversal
+order** (per seqid → topfeature, then `biological_region`, then gene trees by
+`(start,end)`; each gene followed by its transcripts, each transcript by its
+children in `exon → CDS → 5'UTR → 3'UTR` order; ties broken by ID). Attributes
+within a line are emitted in AGAT's order (`gene_id`, `transcript_id`, then the
+rest ASCII-sorted by key). Result: **raw, un-normalized** diff vs AGAT:
+
+| file        | raw-identical lines |
+|-------------|---------------------|
+| yeast       | ~98%                |
+| human_chr21 | ~87%                |
+| human_chr1  | ~84%                |
+
+The raw residual is **DIV-2** below; normalized parity is unaffected (100%/99%).
+
 ## Open divergences
 
 ### DIV-1 — `transposable_element` / `transposable_element_gene` remodeling
@@ -55,6 +72,26 @@ reparenting the children to it.
 `feature_levels.yaml`-driven feature reclassification — high complexity, tiny
 footprint, and arguably the original typing is more faithful to the input.
 **Plan:** revisit if a real consumer needs it; otherwise document and move on.
+
+### DIV-2 — AGAT internal locus-clustering order (raw diff only)
+**Where:** the order in which AGAT emits some sibling transcripts within a gene
+(and the exact slot of the `chromosome` line). AGAT uses an internal
+overlapping-locus clustering / isoform heuristic that is not reproducible from a
+clean `(start, end, id)` key.
+**Impact:** **raw**-diff only — affects line *position*, never line *content*, so
+**normalized parity is 100%/99% (unchanged)**. ~13-16% of human lines, ~2% yeast.
+**Class:** DIV (accepted). gxfkit uses a deterministic `(start, end, id)` order.
+
+### DIV-3 — NCBI-RefSeq-style hierarchy completion
+**Where:** annotations where a gene has a CDS child with no intervening
+mRNA/transcript (common in NCBI RefSeq), and other "incomplete" hierarchies.
+**AGAT:** synthesizes the missing transcript level (inserts an `mRNA`, moves the
+gene's ID onto it, renames the gene `agat-gene-<N>`), i.e. its full
+standardization engine. gxfkit currently carries the input hierarchy through.
+**Impact:** large on NCBI RefSeq corpus (ecoli ~4%, arabidopsis); Ensembl
+unaffected (100%).
+**Class:** DIV (roadmapped). This *is* AGAT's `gxf2gxf` standardization — the
+single biggest remaining feature and the natural next subcommand.
 
 ---
 

@@ -15,10 +15,18 @@ RAW="$DIR/raw"
 mkdir -p "$RAW"
 
 # tier|name|url
+# A spread of providers/conventions on purpose: Ensembl (gene:/transcript: ID
+# prefixes) AND NCBI RefSeq (gene-/rna-/cds- IDs, Dbxref, different attribute
+# style) so parity is tested beyond a single annotation dialect.
 ENTRIES=(
+  # Ensembl
   "small|yeast|${BASE}/gff3/saccharomyces_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.${REL}.gff3.gz"
   "medium|human_chr21|${BASE}/gff3/homo_sapiens/Homo_sapiens.GRCh38.${REL}.chromosome.21.gff3.gz"
   "medium|human_chr1|${BASE}/gff3/homo_sapiens/Homo_sapiens.GRCh38.${REL}.chromosome.1.gff3.gz"
+  "medium|drosophila|${BASE}/gff3/drosophila_melanogaster/Drosophila_melanogaster.BDGP6.46.${REL}.gff3.gz"
+  # NCBI RefSeq (different ID/attribute conventions)
+  "small|ecoli_refseq|https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gff.gz"
+  "large|arabidopsis_refseq|https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/735/GCF_000001735.4_TAIR10.1/GCF_000001735.4_TAIR10.1_genomic.gff.gz"
 )
 
 for e in "${ENTRIES[@]}"; do
