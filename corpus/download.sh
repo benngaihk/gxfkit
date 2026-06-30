@@ -20,7 +20,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RAW="$DIR/raw"
 mkdir -p "$RAW"
 
-CORE=" yeast human_chr21 "  # space-delimited membership test
+CORE=" yeast human_chr21 human_chr1 "  # space-delimited membership test
 
 # tier|name|url
 # A spread of providers/conventions on purpose: Ensembl (gene:/transcript: ID

@@ -8,7 +8,7 @@
 //! GTF lists. This reaches byte-parity with AGAT (after normalization) on the
 //! human corpus; see docs/PARITY.md for the rules and the one open divergence.
 //!
-//! Output is emitted in AGAT's tree-traversal order (see [`emission_order`]) so
+//! Output is emitted in AGAT's tree-traversal order (see [`compute_layout`]) so
 //! it also reaches raw byte-parity on most lines, not just normalized parity.
 //!
 //! Known not-yet-handled cases (see docs/PARITY.md):
@@ -30,29 +30,6 @@ fn index_by_id(records: &[Record]) -> HashMap<&str, usize> {
         }
     }
     m
-}
-
-/// Climb the Parent chain from `idx` to the root, returning the chain of indices
-/// from the starting node up to (and including) the root.
-fn ancestry(records: &[Record], by_id: &HashMap<&str, usize>, idx: usize) -> Vec<usize> {
-    let mut chain = vec![idx];
-    let mut cur = idx;
-    // Guard against cycles in malformed input.
-    let mut seen = 0usize;
-    while let Some(parent_id) = records[cur].parent() {
-        match by_id.get(parent_id) {
-            Some(&p) => {
-                chain.push(p);
-                cur = p;
-            }
-            None => break, // dangling parent: treat current as root
-        }
-        seen += 1;
-        if seen > records.len() {
-            break;
-        }
-    }
-    chain
 }
 
 /// The effective identifier of each record, plus whether it was synthesized.
@@ -116,42 +93,6 @@ fn next_agat_id(
             return id;
         }
     }
-}
-
-/// Resolve (gene_id, transcript_id) for a record given its ancestry chain.
-///
-/// The root of the chain is the gene; the node directly beneath the root is the
-/// transcript. Matching AGAT (observed on Ensembl input):
-///   * `gene_id` strips a leading `gene:` prefix from the root's effective ID;
-///   * `transcript_id` strips a leading `transcript:` prefix from the transcript;
-///   * a root feature that is gene-like or a top-level region (chromosome,
-///     contig, ...) gets a `gene_id` but no `transcript_id`.
-///
-/// See docs/PARITY.md for how this rule was derived and its known limits.
-fn resolve_ids(
-    records: &[Record],
-    eff: &[EffectiveId],
-    chain: &[usize],
-) -> (String, Option<String>) {
-    let root = *chain.last().unwrap();
-    let gene_id = strip_prefix(&eff[root].id, "gene:");
-
-    let transcript_id = if chain.len() >= 2 {
-        let tx = chain[chain.len() - 2];
-        Some(strip_prefix(&eff[tx].id, "transcript:"))
-    } else {
-        // single-node chain: a root feature. Genes and top-level regions get no
-        // transcript_id; anything else is treated as its own transcript so the
-        // output stays valid GTF.
-        let r = &records[root];
-        if is_gene_like(&r.feature_type) || is_toplevel_like(&r.feature_type) {
-            None
-        } else {
-            Some(strip_prefix(&eff[root].id, "transcript:"))
-        }
-    };
-
-    (gene_id, transcript_id)
 }
 
 /// Strip an exact leading `prefix` (e.g. `gene:`), otherwise return as-is.
@@ -257,20 +198,57 @@ fn level1_category(feature_type: &str) -> u8 {
     }
 }
 
-/// Compute the order in which records should be emitted to match AGAT's output.
+/// Emission order plus the resolved `(gene_id, transcript_id)` for each record.
+struct Layout {
+    /// Record indices in AGAT output order.
+    order: Vec<usize>,
+    /// `ids[i]` = (gene_id, transcript_id) for record `i`.
+    ids: Vec<(String, Option<String>)>,
+}
+
+/// Resolve `(gene_id, transcript_id)` for one node given its depth in the tree
+/// and the values inherited from its ancestors. Mirrors AGAT: `gene_id` is the
+/// root's (prefix-stripped) ID, `transcript_id` is the level-1 node's; a root
+/// that is gene-like or a top-level region has no transcript_id.
+fn node_ids(
+    records: &[Record],
+    eff: &[EffectiveId],
+    node: usize,
+    inherited_gene: &str,
+    inherited_tx: &Option<String>,
+    depth: u32,
+) -> (String, Option<String>) {
+    match depth {
+        0 => {
+            let gene = strip_prefix(&eff[node].id, "gene:");
+            let ft = &records[node].feature_type;
+            let tx = if is_gene_like(ft) || is_toplevel_like(ft) {
+                None
+            } else {
+                Some(strip_prefix(&eff[node].id, "transcript:"))
+            };
+            (gene, tx)
+        }
+        1 => (
+            inherited_gene.to_string(),
+            Some(strip_prefix(&eff[node].id, "transcript:")),
+        ),
+        _ => (inherited_gene.to_string(), inherited_tx.clone()),
+    }
+}
+
+/// Build the AGAT-order traversal and resolve every record's gene/transcript IDs
+/// in a single O(n log n) pass (the sort dominates).
 ///
 /// AGAT emits a *tree traversal*, not a flat sort: per seqid (lexicographic),
 /// root features are bucketed by [`level1_category`] then `(start, end)`; each
 /// root is followed immediately by its subtree, with a node's children ordered
 /// by `(type_rank, start, end)` (so a gene's transcripts sort by position, and a
-/// transcript's children come out exon → CDS → 5'UTR → 3'UTR). A few AGAT
-/// internal-clustering quirks (the exact chromosome slot, some nested-gene
-/// orderings) are not reproduced by this pure key — see docs/PARITY.md.
-fn emission_order(
-    records: &[Record],
-    by_id: &HashMap<&str, usize>,
-    eff: &[EffectiveId],
-) -> Vec<usize> {
+/// transcript's children come out exon → CDS → 5'UTR → 3'UTR). IDs are resolved
+/// by propagating gene/transcript down the DFS, so we never re-walk ancestry
+/// per record (which would be O(n²) on a deep Parent chain). A few AGAT
+/// internal-clustering quirks are not reproduced by this pure key — see PARITY.md.
+fn compute_layout(records: &[Record], by_id: &HashMap<&str, usize>, eff: &[EffectiveId]) -> Layout {
     let n = records.len();
     let mut children: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut roots: Vec<usize> = Vec::new();
@@ -305,48 +283,55 @@ fn emission_order(
             .then(eff[a].id.cmp(&eff[b].id))
     });
 
-    // Pre-order DFS via explicit stack (avoids recursion depth limits on
-    // pathologically deep nesting). Children are pushed reversed so the
-    // smallest-key child is processed first.
+    // Pre-order DFS via explicit stack (no recursion depth limit). Each stack
+    // entry carries the gene/transcript inherited from the parent so IDs are
+    // computed once per node.
     let mut order = Vec::with_capacity(n);
+    let mut ids: Vec<(String, Option<String>)> = vec![(String::new(), None); n];
     let mut emitted = vec![false; n];
-    let mut stack: Vec<usize> = roots.iter().rev().copied().collect();
-    while let Some(i) = stack.pop() {
+    let mut stack: Vec<(usize, String, Option<String>, u32)> = roots
+        .iter()
+        .rev()
+        .map(|&r| (r, String::new(), None, 0))
+        .collect();
+    while let Some((i, ig, itx, depth)) = stack.pop() {
         if emitted[i] {
             continue;
         }
         emitted[i] = true;
+        let (gene, tx) = node_ids(records, eff, i, &ig, &itx, depth);
         order.push(i);
         for &c in children[i].iter().rev() {
             if !emitted[c] {
-                stack.push(c);
+                stack.push((c, gene.clone(), tx.clone(), depth.saturating_add(1)));
             }
         }
+        ids[i] = (gene, tx);
     }
     // Any record not reachable from a root (e.g. a Parent cycle) is emitted last
-    // in input order, so every line appears exactly once.
-    for (i, &done) in emitted.iter().enumerate() {
-        if !done {
+    // in input order and treated as its own root, so every line appears once.
+    for i in 0..n {
+        if !emitted[i] {
             order.push(i);
+            ids[i] = node_ids(records, eff, i, "", &None, 0);
         }
     }
-    order
+    Layout { order, ids }
 }
 
 /// Convert a slice of GFF3 records to GTF, writing to `out`.
 ///
-/// Records are emitted in AGAT's tree-traversal order (see [`emission_order`]);
+/// Records are emitted in AGAT's tree-traversal order (see [`compute_layout`]);
 /// the per-record content is independent of order, so this reaches AGAT
 /// byte-parity (modulo a few documented clustering quirks) while the parity
 /// harness — which is order-insensitive — stays unaffected.
 pub fn gff3_to_gtf(records: &[Record], out: &mut impl Write) -> std::io::Result<()> {
     let by_id = index_by_id(records);
     let eff = assign_effective_ids(records);
-    for &i in &emission_order(records, &by_id, &eff) {
-        let r = &records[i];
-        let chain = ancestry(records, &by_id, i);
-        let (gene_id, transcript_id) = resolve_ids(records, &eff, &chain);
-        write_gtf_line(out, r, &gene_id, transcript_id.as_deref(), &eff[i])?;
+    let layout = compute_layout(records, &by_id, &eff);
+    for &i in &layout.order {
+        let (gene_id, transcript_id) = &layout.ids[i];
+        write_gtf_line(out, &records[i], gene_id, transcript_id.as_deref(), &eff[i])?;
     }
     Ok(())
 }
@@ -485,6 +470,40 @@ chr1\tsrc\tchromosome\t1\t1000\t.\t.\t.\tID=chromosome:1
             ],
             "got: {types:?}\n{gtf}"
         );
+    }
+
+    #[test]
+    fn deep_chain_resolves_and_terminates() {
+        // A long Parent chain must resolve in O(n) (not re-walk ancestry per
+        // node) and not hang. Every node's gene_id is the root's.
+        let mut gff = String::from("chr1\tsrc\tgene\t1\t100\t.\t+\t.\tID=gene:g\n");
+        for i in 0..2000 {
+            let parent = if i == 0 {
+                "gene:g".to_string()
+            } else {
+                format!("n{}", i - 1)
+            };
+            gff.push_str(&format!(
+                "chr1\tsrc\tmRNA\t1\t100\t.\t+\t.\tID=n{i};Parent={parent}\n"
+            ));
+        }
+        let gtf = convert(&gff);
+        assert_eq!(gtf.lines().count(), 2001);
+        // every line carries the root gene_id
+        assert!(gtf.lines().all(|l| l.contains("gene_id \"g\";")));
+    }
+
+    #[test]
+    fn self_parent_cycle_does_not_hang_or_panic() {
+        // Self-referential Parent (malformed) must still emit each line once.
+        let gff = "\
+chr1\tsrc\tmRNA\t1\t100\t.\t+\t.\tID=s1;Parent=s1
+chr1\tsrc\tmRNA\t1\t100\t.\t+\t.\tID=s2;Parent=s2
+";
+        let gtf = convert(gff);
+        assert_eq!(gtf.lines().count(), 2);
+        assert!(gtf.contains("gene_id \"s1\";"));
+        assert!(gtf.contains("gene_id \"s2\";"));
     }
 
     #[test]

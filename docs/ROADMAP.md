@@ -23,17 +23,26 @@ parity. If not, stop.
       (now 100% human / 99% yeast; one documented divergence DIV-1 remains)
 - [x] GitHub Actions: build + test + parity regression vs pinned AGAT on push
       (parity gate at 98%, `MIN_PARITY` in `benchmark/summarize.py`)
-- [ ] AGAT-faithful output sort order (so raw diffs shrink too, not just
-      normalized diffs)
-- [ ] Reduce memory: stream / borrow instead of owning every field (the spike
-      reads the whole file and allocates per field — fine for correctness,
-      not for maximizing the "saves memory" claim; already ~4× better than AGAT)
-- [ ] Expand corpus with messy non-model organism annotations
+- [x] AGAT-faithful output sort order → raw byte-parity ~84-98% (DIV-2 residual)
+- [x] Expand corpus with other conventions (NCBI RefSeq, Drosophila, Arabidopsis)
+      → core (gated) vs extended (stress) split
+- [x] Robustness pass: tolerate non-UTF-8 input, accurate parse errors, gzip
+      input (.gff.gz auto-detect, file/stdin)
+- [ ] Reduce memory: stream / borrow instead of owning every field (already ~4×
+      better than AGAT; gff2gtf needs the full graph, so this means borrowing
+      from a single buffer, not true streaming)
 - [ ] README benchmark table + asciinema demo; soft release (rust-bio circle)
 
-## M2 — PyO3 bindings + Top-5 subcommands
+## M2 — Standardization engine + PyO3 + Top-5 subcommands
+The big remaining feature is AGAT's hierarchy **standardization** (DIV-3): when a
+gene has children with a missing intermediate level (e.g. NCBI RefSeq gene→CDS
+with no mRNA), AGAT synthesizes the transcript level. This is what makes AGAT
+valuable ("it eats any messy GFF") and unblocks `gxf2gxf` + most other tools.
+- [ ] `gxf2gxf` standardization (GFF3→standardized GFF3); the engine that
+      synthesizes missing parents / completes the gene→transcript→exon hierarchy
+- [ ] `transposable_element` remodeling (DIV-1) — closes yeast/drosophila
 - [ ] PyO3 wrapper; publish to PyPI + Bioconda; `cargo install`
-- [ ] Add: gxf standardization, gtf2gff, sequence extraction, stats/filter
+- [ ] Add: gtf2gff, sequence extraction, stats/filter
 - [ ] **Gate:** `pip install gxfkit` / `conda install gxfkit` works; 5
       subcommands each with parity + benchmark
 

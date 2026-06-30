@@ -5,7 +5,7 @@
 //! swapping `agat_convert_sp_gff2gtf.pl` for `gxfkit gff2gtf` is near-zero cost.
 
 use std::fs::File;
-use std::io::{self, BufReader, BufWriter, Write};
+use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::process::ExitCode;
 
 const USAGE: &str = "\
@@ -60,11 +60,18 @@ fn main() -> ExitCode {
 fn run_result(r: io::Result<()>) -> ExitCode {
     match r {
         Ok(()) => ExitCode::SUCCESS,
+        // A downstream `| head` closing the pipe is normal, not an error.
+        Err(e) if is_broken_pipe(&e) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("gxfkit: error: {e}");
             ExitCode::FAILURE
         }
     }
+}
+
+fn is_broken_pipe(e: &io::Error) -> bool {
+    // ERROR_BROKEN_PIPE (109) / ERROR_NO_DATA (232) on Windows.
+    e.kind() == io::ErrorKind::BrokenPipe || matches!(e.raw_os_error(), Some(109) | Some(232))
 }
 
 fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
@@ -102,12 +109,12 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
     };
     let records = match input {
         Some(path) => {
-            let reader = maybe_gunzip(BufReader::new(File::open(&path)?))?;
+            let reader = maybe_gunzip(File::open(&path)?)?;
             gxfkit_core::reader::read_all(reader).map_err(to_err)?
         }
         None => {
             let stdin = io::stdin();
-            let reader = maybe_gunzip(BufReader::new(stdin.lock()))?;
+            let reader = maybe_gunzip(stdin.lock())?;
             gxfkit_core::reader::read_all(reader).map_err(to_err)?
         }
     };
@@ -121,20 +128,28 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
     Ok(())
 }
 
-/// Wrap `reader` in a gzip decoder if its first bytes are the gzip magic
-/// (`1f 8b`). Uses `fill_buf` to peek without consuming, so the bytes are still
-/// seen by whichever reader we return.
-fn maybe_gunzip<R: std::io::BufRead + 'static>(
-    mut reader: R,
-) -> io::Result<Box<dyn std::io::BufRead>> {
-    let head = reader.fill_buf()?;
-    let is_gzip = head.len() >= 2 && head[0] == 0x1f && head[1] == 0x8b;
-    if is_gzip {
+/// Wrap `reader` in a gzip decoder if it begins with the gzip magic (`1f 8b`).
+///
+/// We read exactly the first two bytes (looping over short reads, which a pipe
+/// may produce) and then chain them back in front of the rest, so detection is
+/// independent of how the source chunks its data.
+fn maybe_gunzip<R: Read + 'static>(mut reader: R) -> io::Result<Box<dyn std::io::BufRead>> {
+    let mut magic = [0u8; 2];
+    let mut n = 0;
+    while n < magic.len() {
+        match reader.read(&mut magic[n..])? {
+            0 => break, // EOF before 2 bytes
+            k => n += k,
+        }
+    }
+    let head = magic[..n].to_vec();
+    let combined = io::Cursor::new(head).chain(reader);
+    if n == 2 && magic[0] == 0x1f && magic[1] == 0x8b {
         Ok(Box::new(BufReader::new(flate2::read::MultiGzDecoder::new(
-            reader,
+            combined,
         ))))
     } else {
-        Ok(Box::new(reader))
+        Ok(Box::new(BufReader::new(combined)))
     }
 }
 

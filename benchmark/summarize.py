@@ -122,13 +122,16 @@ def main(argv: list[str]) -> int:
     floor = os.environ.get("MIN_PARITY")
     if floor:
         floor = float(floor)
-        bad = [r for r in rows if r["parity"] != "NA" and float(r["parity"]) < floor]
+        # A missing/NA parity means the normalizer crashed or an output file is
+        # missing — that's a failure, not a pass-by-omission.
+        bad = [r for r in rows if r["parity"] == "NA" or float(r["parity"]) < floor]
+        if not rows:
+            print("PARITY GATE: no files were evaluated", file=sys.stderr)
+            return 1
         if bad:
             for r in bad:
-                print(
-                    f"PARITY REGRESSION: {r['file']} {r['parity']}% < {floor}%",
-                    file=sys.stderr,
-                )
+                why = "no parity computed" if r["parity"] == "NA" else f"{r['parity']}% < {floor}%"
+                print(f"PARITY REGRESSION: {r['file']} {why}", file=sys.stderr)
             return 1
     return 0
 
