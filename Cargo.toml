@@ -6,7 +6,7 @@ members = ["crates/gxfkit-core", "crates/gxfkit"]
 version = "0.0.1"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/REPLACE_ME/gxfkit"
+repository = "https://github.com/benngaihk/gxfkit"
 authors = ["gxfkit contributors"]
 
 [profile.release]
