@@ -29,10 +29,11 @@ USAGE:
     gxfkit gff2gtf [-g <input.gff>] [-o <output.gtf>]
 
 OPTIONS:
-    -g, --gff <FILE>      Input GFF3 file (default: stdin)
+    -g, --gff <FILE>      Input GFF3 file, plain or gzipped (default: stdin)
     -o, --output <FILE>   Output GTF file (default: stdout)
     -h, --help            Show this message
 
+Gzip input is auto-detected (magic bytes), from a file or stdin.
 Aliases for AGAT compatibility: --gff, -i accepted for input.
 ";
 
@@ -94,17 +95,20 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
 
     // Stream the input through the reader (gff2gtf needs the whole feature graph,
     // so records are still collected, but we don't slurp the file into a String
-    // first — that would reject any non-UTF-8 byte).
+    // first — that would reject any non-UTF-8 byte). Gzip is auto-detected by
+    // magic bytes, so plain or .gz input both work, from a file or stdin.
     let to_err = |e: gxfkit_core::reader::ParseError| {
         io::Error::new(io::ErrorKind::InvalidData, e.to_string())
     };
     let records = match input {
         Some(path) => {
-            gxfkit_core::reader::read_all(BufReader::new(File::open(&path)?)).map_err(to_err)?
+            let reader = maybe_gunzip(BufReader::new(File::open(&path)?))?;
+            gxfkit_core::reader::read_all(reader).map_err(to_err)?
         }
         None => {
             let stdin = io::stdin();
-            gxfkit_core::reader::read_all(stdin.lock()).map_err(to_err)?
+            let reader = maybe_gunzip(BufReader::new(stdin.lock()))?;
+            gxfkit_core::reader::read_all(reader).map_err(to_err)?
         }
     };
 
@@ -115,6 +119,23 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
     gxfkit_core::convert::gff3_to_gtf(&records, &mut out)?;
     out.flush()?;
     Ok(())
+}
+
+/// Wrap `reader` in a gzip decoder if its first bytes are the gzip magic
+/// (`1f 8b`). Uses `fill_buf` to peek without consuming, so the bytes are still
+/// seen by whichever reader we return.
+fn maybe_gunzip<R: std::io::BufRead + 'static>(
+    mut reader: R,
+) -> io::Result<Box<dyn std::io::BufRead>> {
+    let head = reader.fill_buf()?;
+    let is_gzip = head.len() >= 2 && head[0] == 0x1f && head[1] == 0x8b;
+    if is_gzip {
+        Ok(Box::new(BufReader::new(flate2::read::MultiGzDecoder::new(
+            reader,
+        ))))
+    } else {
+        Ok(Box::new(reader))
+    }
 }
 
 fn next_value<'a, I: Iterator<Item = &'a String>>(it: &mut I, flag: &str) -> io::Result<String> {

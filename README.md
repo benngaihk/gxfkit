@@ -66,10 +66,13 @@ powershell -File scripts/with-msvc-env.ps1 cargo build --release
 ## Usage
 
 ```text
-gxfkit gff2gtf [-g <input.gff>] [-o <output.gtf>]
-  -g, --gff <FILE>      Input GFF3 file (default: stdin)
+gxfkit gff2gtf [-g <input.gff[.gz]>] [-o <output.gtf>]
+  -g, --gff <FILE>      Input GFF3 file, plain or gzipped (default: stdin)
   -o, --output <FILE>   Output GTF file (default: stdout)
 ```
+
+Gzip input is auto-detected, so `gxfkit gff2gtf -g ann.gff3.gz` and
+`zcat ann.gff3.gz | gxfkit gff2gtf` both work.
 
 Flags mirror the AGAT script they replace (`agat_convert_sp_gff2gtf.pl`), so
 swapping it into an existing pipeline is near-zero cost.
