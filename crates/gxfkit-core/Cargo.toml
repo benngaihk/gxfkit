@@ -8,3 +8,4 @@ description = "Core GFF/GTF model, parsing, and conversions for gxfkit"
 [dependencies]
 
 [dev-dependencies]
+proptest = "1"

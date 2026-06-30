@@ -47,7 +47,11 @@ valuable ("it eats any messy GFF") and unblocks `gxf2gxf` + most other tools.
       subcommands each with parity + benchmark
 
 ## M3 — Robustness moat
-- [ ] Fuzzing on malformed input; property tests on the parser
+- [x] Property tests on the parser + converter (proptest): never panic on
+      arbitrary bytes/tab structures; well-formed input always yields valid GTF
+      (`crates/gxfkit-core/tests/property.rs`)
+- [x] Fixed an O(n²) hang on deep Parent chains (found by adversarial review)
+- [ ] cargo-fuzz target for continuous fuzzing
 - [ ] Match AGAT's tolerance of the ugliest real-world GFF/GTF flavors
 - [ ] Exhaustive divergence ledger
 

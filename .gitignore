@@ -20,3 +20,5 @@ Thumbs.db
 
 # Local runtime / scheduler state
 .claude/
+
+# proptest failure seeds (none yet); keep if any appear
