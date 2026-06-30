@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: build + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --all
+      - run: cargo build --release
+
+  parity:
+    name: parity vs AGAT (gold standard)
+    runs-on: ubuntu-latest
+    # The parity job runs both tools in the benchmark container and diffs the
+    # output through the normalizer. It is the project's correctness regression
+    # gate. Allowed to fail until M1 closes the documented gaps.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download corpus
+        run: bash corpus/download.sh
+      - name: Build benchmark image
+        run: docker build -f benchmark/Dockerfile -t gxfkit-bench .
+      - name: Run parity (no timing)
+        run: |
+          docker run --rm \
+            -v "$PWD/corpus/raw:/corpus:ro" \
+            -v "$PWD/tests/parity:/parity:ro" \
+            -v "$PWD/benchmark/results:/work/results" \
+            -e RUNS=1 \
+            gxfkit-bench
+      - uses: actions/upload-artifact@v4
+        with:
+          name: parity-results
+          path: benchmark/results/*.parity.txt

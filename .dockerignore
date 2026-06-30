@@ -1,0 +1,8 @@
+# Keep the build context tiny: the benchmark image only needs the crates +
+# manifests to compile gxfkit. Everything else is mounted at run time.
+target/
+corpus/raw/
+benchmark/results/
+.git/
+docs/
+*.md

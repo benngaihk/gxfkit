@@ -1,0 +1,14 @@
+[package]
+name = "gxfkit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "A fast, drop-in Rust reimplementation of AGAT's most-used GTF/GFF operations"
+repository.workspace = true
+
+[[bin]]
+name = "gxfkit"
+path = "src/main.rs"
+
+[dependencies]
+gxfkit-core = { path = "../gxfkit-core" }
