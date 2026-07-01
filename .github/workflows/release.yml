@@ -75,7 +75,7 @@ jobs:
           chmod +x "dist/${name}/gxfkit"
           cp README.md LICENSE "dist/${name}/"
           tar -C dist -czf "dist/${name}.tar.gz" "${name}"
-          shasum -a 256 "dist/${name}.tar.gz" > "dist/${name}.tar.gz.sha256"
+          (cd dist && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256")
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package }}
