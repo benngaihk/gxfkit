@@ -71,7 +71,7 @@ valuable ("it eats any messy GFF") and unblocks `gxf2gxf` + most other tools.
       arbitrary bytes/tab structures; well-formed input always yields valid GTF
       (`crates/gxfkit-core/tests/property.rs`)
 - [x] Fixed an O(n²) hang on deep Parent chains (found by adversarial review)
-- [ ] cargo-fuzz target for continuous fuzzing ([#5](https://github.com/benngaihk/gxfkit/issues/5))
+- [x] cargo-fuzz targets for parser and converter inputs ([#5](https://github.com/benngaihk/gxfkit/issues/5))
 - [ ] Sanitize mode: skip or repair common malformed records with diagnostics ([#6](https://github.com/benngaihk/gxfkit/issues/6))
 - [ ] Match AGAT's tolerance of the ugliest real-world GFF/GTF flavors
 - [ ] Exhaustive divergence ledger

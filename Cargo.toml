@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/gxfkit-core", "crates/gxfkit"]
+exclude = ["fuzz"]
 
 [workspace.package]
 version = "0.0.1"

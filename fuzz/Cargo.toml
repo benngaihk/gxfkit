@@ -1,0 +1,26 @@
+[package]
+name = "gxfkit-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+gxfkit-core = { path = "../crates/gxfkit-core" }
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "reader"
+path = "fuzz_targets/reader.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "gff3_to_gtf"
+path = "fuzz_targets/gff3_to_gtf.rs"
+test = false
+doc = false
+bench = false
