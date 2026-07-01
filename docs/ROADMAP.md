@@ -47,7 +47,7 @@ the benchmark/parity claims from the release artifact.
 - [x] Crates.io dry-run for `gxfkit-core`
 - [x] Public GitHub `v0.0.1` release with verified assets
 - [ ] Publish `gxfkit-core` and `gxfkit` to Crates.io ([#1](https://github.com/benngaihk/gxfkit/issues/1))
-- [ ] Add Bioconda recipe (`conda install -c bioconda gxfkit`) ([#2](https://github.com/benngaihk/gxfkit/issues/2))
+- [ ] Add Bioconda recipe (`conda install -c bioconda gxfkit`) ([#2](https://github.com/benngaihk/gxfkit/issues/2); PR [bioconda-recipes#66815](https://github.com/bioconda/bioconda-recipes/pull/66815))
 - [x] Expand install docs and FAQ with common pipeline swap-in examples
 - [ ] **Gate:** a clean machine can install `gxfkit` from GitHub Releases,
       `cargo install gxfkit`, or Bioconda and run `gff2gtf`
