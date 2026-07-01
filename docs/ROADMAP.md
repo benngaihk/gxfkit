@@ -43,7 +43,8 @@ the benchmark/parity claims from the release artifact.
       macOS archives
 - [x] Release checklist and local preflight script
 - [x] Bioconda starter recipe template
-- [ ] Cut the first draft GitHub release and verify every archive runs
+- [x] Cut the first draft GitHub release and verify every archive runs
+- [x] Crates.io dry-run for `gxfkit-core`
 - [ ] Publish `gxfkit-core` and `gxfkit` to Crates.io
 - [ ] Add Bioconda recipe (`conda install -c bioconda gxfkit`)
 - [x] Expand install docs and FAQ with common pipeline swap-in examples

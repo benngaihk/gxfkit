@@ -27,13 +27,16 @@ Publish the library crate first, then the binary crate:
 
 ```bash
 cargo login
-cargo publish -p gxfkit-core
+cargo publish -p gxfkit-core --registry crates-io
 # Wait until the registry index sees gxfkit-core.
-cargo publish -p gxfkit
+cargo publish -p gxfkit --registry crates-io
 ```
 
 The `gxfkit` package depends on `gxfkit-core` by version, so `gxfkit` cannot be
 verified against the registry until `gxfkit-core` is visible there.
+
+On machines that replace crates.io with a mirror in `~/.cargo/config.toml`, keep
+the explicit `--registry crates-io` flag for both dry-runs and real publishes.
 
 ## 3. GitHub Release
 
