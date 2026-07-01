@@ -40,6 +40,12 @@ gxfkit gff2gtf -g annotation.gff3.gz -o annotation.gtf
 zcat annotation.gff3.gz | gxfkit gff2gtf > annotation.gtf
 ```
 
+## 输入文件有坏行时会怎样？
+
+默认模式是严格的：格式错误的数据行会让转换停止，这样 parity 问题不会被悄悄吞掉。
+对于真实世界里比较脏的文件，可以用 `gxfkit gff2gtf --sanitize` 跳过列数错误或坐标
+非法的记录；每一条被跳过的行都会在 stderr 中留下诊断，方便审计。
+
 ## 为什么输出行顺序和 AGAT 不完全一样？
 
 AGAT 的部分 sibling 排序来自内部 locus clustering / isoform 逻辑。`gxfkit` 使用可

@@ -99,9 +99,10 @@ powershell -File scripts/with-msvc-env.ps1 cargo build --release
 ## 使用
 
 ```text
-gxfkit gff2gtf [-g <input.gff[.gz]>] [-o <output.gtf>]
+gxfkit gff2gtf [-g <input.gff[.gz]>] [-o <output.gtf>] [--sanitize]
   -g, --gff <FILE>      输入 GFF3 文件，可为普通文本或 gzip，默认 stdin
   -o, --output <FILE>   输出 GTF 文件，默认 stdout
+  --sanitize            跳过格式错误的数据行，并把诊断写到 stderr
 ```
 
 gzip 会自动识别：
@@ -110,6 +111,9 @@ gzip 会自动识别：
 gxfkit gff2gtf -g annotation.gff3.gz -o annotation.gtf
 zcat annotation.gff3.gz | gxfkit gff2gtf > annotation.gtf
 ```
+
+默认模式会在遇到格式错误的数据行时停止转换，方便暴露 parity 问题。只有在你明确想
+跳过列数错误或坐标非法的记录、并通过 stderr 审计被跳过行时，才使用 `--sanitize`。
 
 从 AGAT 替换过来：
 
