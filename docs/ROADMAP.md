@@ -28,7 +28,7 @@ parity. If not, stop.
       → core (gated) vs extended (stress) split
 - [x] Robustness pass: tolerate non-UTF-8 input, accurate parse errors, gzip
       input (.gff.gz auto-detect, file/stdin)
-- [ ] Reduce memory: stream / borrow instead of owning every field (already ~4×
+- [ ] Reduce memory: stream / borrow instead of owning every field ([#3](https://github.com/benngaihk/gxfkit/issues/3); already ~4×
       better than AGAT; gff2gtf needs the full graph, so this means borrowing
       from a single buffer, not true streaming)
 - [x] README benchmark table
@@ -46,8 +46,8 @@ the benchmark/parity claims from the release artifact.
 - [x] Cut the first draft GitHub release and verify every archive runs
 - [x] Crates.io dry-run for `gxfkit-core`
 - [x] Public GitHub `v0.0.1` release with verified assets
-- [ ] Publish `gxfkit-core` and `gxfkit` to Crates.io
-- [ ] Add Bioconda recipe (`conda install -c bioconda gxfkit`)
+- [ ] Publish `gxfkit-core` and `gxfkit` to Crates.io ([#1](https://github.com/benngaihk/gxfkit/issues/1))
+- [ ] Add Bioconda recipe (`conda install -c bioconda gxfkit`) ([#2](https://github.com/benngaihk/gxfkit/issues/2))
 - [x] Expand install docs and FAQ with common pipeline swap-in examples
 - [ ] **Gate:** a clean machine can install `gxfkit` from GitHub Releases,
       `cargo install gxfkit`, or Bioconda and run `gff2gtf`
@@ -57,7 +57,7 @@ The big remaining feature is AGAT's hierarchy **standardization** (DIV-3): when 
 gene has children with a missing intermediate level (e.g. NCBI RefSeq gene→CDS
 with no mRNA), AGAT synthesizes the transcript level. This is what makes AGAT
 valuable ("it eats any messy GFF") and unblocks `gxf2gxf` + most other tools.
-- [ ] `gxf2gxf` standardization (GFF3→standardized GFF3); the engine that
+- [ ] `gxf2gxf` standardization (GFF3→standardized GFF3) ([#4](https://github.com/benngaihk/gxfkit/issues/4)); the engine that
       synthesizes missing parents / completes the gene→transcript→exon hierarchy
 - [ ] `transposable_element` remodeling (DIV-1) — closes yeast/drosophila
 - [ ] Add: `gtf2gff`
@@ -71,8 +71,8 @@ valuable ("it eats any messy GFF") and unblocks `gxf2gxf` + most other tools.
       arbitrary bytes/tab structures; well-formed input always yields valid GTF
       (`crates/gxfkit-core/tests/property.rs`)
 - [x] Fixed an O(n²) hang on deep Parent chains (found by adversarial review)
-- [ ] cargo-fuzz target for continuous fuzzing
-- [ ] Sanitize mode: skip or repair common malformed records with diagnostics
+- [ ] cargo-fuzz target for continuous fuzzing ([#5](https://github.com/benngaihk/gxfkit/issues/5))
+- [ ] Sanitize mode: skip or repair common malformed records with diagnostics ([#6](https://github.com/benngaihk/gxfkit/issues/6))
 - [ ] Match AGAT's tolerance of the ugliest real-world GFF/GTF flavors
 - [ ] Exhaustive divergence ledger
 
