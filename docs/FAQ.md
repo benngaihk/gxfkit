@@ -37,6 +37,13 @@ gxfkit gff2gtf -g annotation.gff3.gz -o annotation.gtf
 zcat annotation.gff3.gz | gxfkit gff2gtf > annotation.gtf
 ```
 
+## How does malformed input behave?
+
+The default mode is strict: malformed data records stop the conversion so parity
+failures are visible. For messy real-world files, `gxfkit gff2gtf --sanitize`
+skips records with bad column counts or invalid coordinates and writes stderr
+diagnostics for every skipped line.
+
 ## Why does my output order differ from AGAT?
 
 Some AGAT sibling ordering is tied to internal locus clustering. `gxfkit` uses a

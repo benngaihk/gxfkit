@@ -97,13 +97,18 @@ powershell -File scripts/with-msvc-env.ps1 cargo build --release
 ## Usage
 
 ```text
-gxfkit gff2gtf [-g <input.gff[.gz]>] [-o <output.gtf>]
+gxfkit gff2gtf [-g <input.gff[.gz]>] [-o <output.gtf>] [--sanitize]
   -g, --gff <FILE>      Input GFF3 file, plain or gzipped (default: stdin)
   -o, --output <FILE>   Output GTF file (default: stdout)
+  --sanitize            Skip malformed data records with stderr diagnostics
 ```
 
 Gzip input is auto-detected, so `gxfkit gff2gtf -g ann.gff3.gz` and
 `zcat ann.gff3.gz | gxfkit gff2gtf` both work.
+
+By default, malformed data records stop the conversion. Use `--sanitize` only
+when you want to skip records with bad column counts or coordinates and audit
+the skipped lines from stderr diagnostics.
 
 Flags mirror the AGAT script they replace (`agat_convert_sp_gff2gtf.pl`), so
 swapping it into an existing pipeline is near-zero cost.

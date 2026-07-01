@@ -26,11 +26,12 @@ const GFF2GTF_USAGE: &str = "\
 gxfkit gff2gtf — convert GFF3 to GTF
 
 USAGE:
-    gxfkit gff2gtf [-g <input.gff>] [-o <output.gtf>]
+    gxfkit gff2gtf [-g <input.gff>] [-o <output.gtf>] [--sanitize]
 
 OPTIONS:
     -g, --gff <FILE>      Input GFF3 file, plain or gzipped (default: stdin)
     -o, --output <FILE>   Output GTF file (default: stdout)
+    --sanitize            Skip malformed data records with stderr diagnostics
     -h, --help            Show this message
 
 Gzip input is auto-detected (magic bytes), from a file or stdin.
@@ -77,6 +78,7 @@ fn is_broken_pipe(e: &io::Error) -> bool {
 fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
     let mut input: Option<String> = None;
     let mut output: Option<String> = None;
+    let mut sanitize = false;
 
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -91,6 +93,9 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
             "-o" | "--output" => {
                 output = Some(next_value(&mut it, arg)?);
             }
+            "--sanitize" => {
+                sanitize = true;
+            }
             other => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
@@ -104,18 +109,15 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
     // so records are still collected, but we don't slurp the file into a String
     // first — that would reject any non-UTF-8 byte). Gzip is auto-detected by
     // magic bytes, so plain or .gz input both work, from a file or stdin.
-    let to_err = |e: gxfkit_core::reader::ParseError| {
-        io::Error::new(io::ErrorKind::InvalidData, e.to_string())
-    };
     let records = match input {
         Some(path) => {
             let reader = maybe_gunzip(File::open(&path)?)?;
-            gxfkit_core::reader::read_all(reader).map_err(to_err)?
+            read_records(reader, sanitize)?
         }
         None => {
             let stdin = io::stdin();
             let reader = maybe_gunzip(stdin.lock())?;
-            gxfkit_core::reader::read_all(reader).map_err(to_err)?
+            read_records(reader, sanitize)?
         }
     };
 
@@ -126,6 +128,28 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
     gxfkit_core::convert::gff3_to_gtf(&records, &mut out)?;
     out.flush()?;
     Ok(())
+}
+
+fn read_records<R: std::io::BufRead>(
+    reader: R,
+    sanitize: bool,
+) -> io::Result<Vec<gxfkit_core::Record>> {
+    if sanitize {
+        let (records, skipped) = gxfkit_core::reader::read_all_sanitize(reader, |e| {
+            eprintln!("gxfkit: warning: --sanitize skipped malformed record: {e}");
+        })
+        .map_err(parse_error_to_io)?;
+        if skipped > 0 {
+            eprintln!("gxfkit: warning: --sanitize skipped {skipped} malformed record(s)");
+        }
+        Ok(records)
+    } else {
+        gxfkit_core::reader::read_all(reader).map_err(parse_error_to_io)
+    }
+}
+
+fn parse_error_to_io(e: gxfkit_core::reader::ParseError) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, e.to_string())
 }
 
 /// Wrap `reader` in a gzip decoder if it begins with the gzip magic (`1f 8b`).

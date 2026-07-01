@@ -148,6 +148,34 @@ pub fn read_all<R: BufRead>(reader: R) -> Result<Vec<Record>, ParseError> {
     Ok(out)
 }
 
+/// Read every parseable record, reporting and skipping malformed data records.
+///
+/// I/O errors are still fatal. This is intentionally opt-in so the default
+/// conversion path remains strict for AGAT parity.
+pub fn read_all_sanitize<R, F>(
+    reader: R,
+    mut on_skip: F,
+) -> Result<(Vec<Record>, usize), ParseError>
+where
+    R: BufRead,
+    F: FnMut(&ParseError),
+{
+    let mut r = GffReader::new(reader);
+    let mut out = Vec::new();
+    let mut skipped = 0;
+    loop {
+        match r.next_record() {
+            Ok(Some(rec)) => out.push(rec),
+            Ok(None) => return Ok((out, skipped)),
+            Err(ParseError::Io(e)) => return Err(ParseError::Io(e)),
+            Err(e) => {
+                skipped += 1;
+                on_skip(&e);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,5 +219,21 @@ ACGT
             }
             other => panic!("expected BadColumnCount, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn sanitize_skips_bad_records_and_continues() {
+        let data = b"\
+chr1\tsrc\tgene\t1\t100\t.\t+\t.\tID=g1
+bad\ttoo\tfew
+chr1\tsrc\tmRNA\t1\t100\t.\t+\t.\tID=t1;Parent=g1
+"
+        .to_vec();
+        let mut diagnostics = Vec::new();
+        let (recs, skipped) =
+            read_all_sanitize(Cursor::new(data), |e| diagnostics.push(e.to_string())).unwrap();
+        assert_eq!(skipped, 1);
+        assert_eq!(recs.len(), 2);
+        assert!(diagnostics[0].contains("line 2: expected 9 columns"));
     }
 }
