@@ -1,5 +1,7 @@
 # gxfkit
 
+English | [简体中文](README.zh-CN.md)
+
 > A fast, drop-in Rust reimplementation of [AGAT](https://github.com/NBISweden/AGAT)'s
 > most-used GTF/GFF operations. Identical output, much faster. One-line install.
 

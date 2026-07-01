@@ -1,0 +1,173 @@
+# gxfkit
+
+[English](README.md) | 简体中文
+
+> `gxfkit` 是一个用 Rust 实现的高速 GFF3/GTF 工具集，目标是兼容
+> [AGAT](https://github.com/NBISweden/AGAT) 中最常用、最耗时的一部分命令：
+> 输入方式尽量一致，输出以 AGAT 为正确性基准，但运行更快、内存更省。
+
+`gxfkit` 目前聚焦在基因组注释流程里非常常见的 GFF3/GTF 转换场景，尤其是
+`agat_convert_sp_gff2gtf.pl` 的替代路径。它不是 AGAT 的完整重写，而是一个
+**可逐步替换的高性能子集**。
+
+AGAT 仍然是本项目的正确性基准。`gxfkit` 的每个输出差异都应该被修复，或者在
+[docs/PARITY.md](docs/PARITY.md) 中记录清楚。
+
+> **当前状态：alpha。** 目前主要支持 `gff2gtf` 一个子命令；在人类 chr1/chr21
+> 语料上，经过顺序无关的标准化比较后与 AGAT 100% 一致；酵母语料为 99.05%，
+> 剩余差异已记录。当前重点是打包、发布和扩大兼容范围。
+
+---
+
+## 为什么值得关注
+
+在很多注释、转录组、泛基因组或流程交付任务中，GFF3/GTF 转换并不是分析的核心，
+但会反复出现在流程关键路径上。AGAT 很可靠，但在大文件上可能比较慢。`gxfkit`
+的定位是：
+
+- **更快：** Rust 实现，当前基准中比 AGAT 快几十倍。
+- **更容易塞进流程：** CLI 参数尽量贴近 AGAT 的常用脚本。
+- **更重视可验证：** benchmark 和 parity harness 都在仓库里，可以一键复现。
+- **不夸大兼容性：** 支持范围、已知差异和路线图公开记录。
+
+---
+
+## 基准结果
+
+以下数据来自 `benchmark/run.sh`：AGAT 1.7.0 和 `gxfkit` 在同一个 Linux 容器中运行，
+使用固定公开 Ensembl 注释文件。完整方法见 [benchmark/](benchmark/)。
+
+| 文件 | AGAT | gxfkit | 加速比 | AGAT 内存 | gxfkit 内存 | parity |
+|------|------|--------|--------|-----------|-------------|--------|
+| `human_chr1` | 78.47 s | 1.25 s | **62.8x** | 5.47 GB | 1.41 GB | 100.00% |
+| `human_chr21` | 12.52 s | 140 ms | **89.4x** | 935 MB | 194 MB | 100.00% |
+| `yeast` | 9.68 s | 120 ms | **80.7x** | 752 MB | 155 MB | 99.05% |
+
+这里的 `parity` 是把两个工具的输出都经过 `tests/parity/normalize.py` 后再比较：
+它会消除行顺序、属性顺序和空白差异，但不会掩盖真实的值差异。详见
+[docs/PARITY.md](docs/PARITY.md)。
+
+---
+
+## 安装
+
+### GitHub Releases
+
+打 tag 后，GitHub Releases 会发布以下平台的预编译包：
+
+- Linux x86_64，静态 musl
+- Linux aarch64，静态 musl
+- macOS x86_64
+- macOS aarch64
+
+从 [GitHub Releases](https://github.com/benngaihk/gxfkit/releases) 下载对应平台的
+`.tar.gz`，解压后把 `gxfkit` 放到 `PATH` 即可。
+
+```bash
+tar -xzf gxfkit-vX.Y.Z-linux-x86_64-static.tar.gz
+./gxfkit-vX.Y.Z-linux-x86_64-static/gxfkit version
+```
+
+### 从源码编译
+
+```bash
+cargo build --release
+./target/release/gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
+```
+
+### 计划中的分发方式
+
+项目正在准备更适合生信用户的安装入口：
+
+- Bioconda：`conda install -c bioconda gxfkit`
+- Crates.io：`cargo install gxfkit`
+- Python/PyO3 绑定：`pip install gxfkit`
+
+这些入口在正式发布前不应写进生产文档作为已可用渠道。
+
+### Windows 编译说明
+
+如果 MSVC Rust 工具链直接 `cargo build` 报
+`LNK1181: cannot open input file 'kernel32.lib'`，请用仓库里的辅助脚本：
+
+```powershell
+powershell -File scripts/with-msvc-env.ps1 cargo build --release
+```
+
+---
+
+## 使用
+
+```text
+gxfkit gff2gtf [-g <input.gff[.gz]>] [-o <output.gtf>]
+  -g, --gff <FILE>      输入 GFF3 文件，可为普通文本或 gzip，默认 stdin
+  -o, --output <FILE>   输出 GTF 文件，默认 stdout
+```
+
+gzip 会自动识别：
+
+```bash
+gxfkit gff2gtf -g annotation.gff3.gz -o annotation.gtf
+zcat annotation.gff3.gz | gxfkit gff2gtf > annotation.gtf
+```
+
+从 AGAT 替换过来：
+
+```bash
+agat_convert_sp_gff2gtf.pl -g annotation.gff3 -o annotation.gtf
+```
+
+改成：
+
+```bash
+gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
+```
+
+`-i` 和 `--input` 也可以作为输入参数别名，方便接入已有流程。
+
+---
+
+## 正确性如何保证
+
+1. **AGAT 1.7.0 是基准。** 支持范围内的输出以 AGAT 为 correctness oracle。
+2. **真实语料对比。** 仓库提供固定公开语料和 Docker benchmark。
+3. **标准化后 diff。** 只忽略顺序和空白这类不影响语义的差异。
+4. **差异账本。** 所有接受的差异记录在 [docs/PARITY.md](docs/PARITY.md)。
+
+如果你发现 AGAT 和 `gxfkit` 的真实输出差异，请提交 “AGAT parity divergence”
+issue，并尽量附上最小可复现片段。
+
+---
+
+## 适合哪些用户试用
+
+适合：
+
+- 已经在流程中使用 `agat_convert_sp_gff2gtf.pl`，想降低运行时间。
+- 需要处理较大的 Ensembl 风格 GFF3/GTF 注释文件。
+- 愿意在正式替换前先跑 parity 检查的流程工程师或生信分析人员。
+
+暂不建议直接替换：
+
+- 强依赖 AGAT 全量命令矩阵的流程。
+- 主要处理 NCBI RefSeq 式不完整层级并要求 AGAT 标准化行为的流程。
+- 不能接受 alpha 阶段工具的生产环境。
+
+---
+
+## 中文社区
+
+中文用户可以从这些入口开始：
+
+- [中文 FAQ](docs/FAQ.zh-CN.md)
+- [中文贡献指南](CONTRIBUTING.zh-CN.md)
+- [中文社区维护指南](docs/COMMUNITY.zh-CN.md)
+- GitHub Issues：可以使用中文提交 bug、功能请求或 AGAT parity 差异。
+
+欢迎反馈真实数据上的兼容性问题。对这个项目来说，高质量的最小复现用例比泛泛的
+“支持某格式”请求更有价值。
+
+## License
+
+MIT。AGAT 是 GPL-3.0 项目，由 NBIS 独立开发；`gxfkit` 是 clean-room
+reimplementation，只把 AGAT 当作黑盒正确性基准。

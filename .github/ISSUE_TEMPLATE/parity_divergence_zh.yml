@@ -1,0 +1,46 @@
+name: AGAT parity 差异（中文）
+description: 报告同一输入下 AGAT 和 gxfkit 输出不一致的问题。
+title: "parity: "
+labels: ["parity"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AGAT 是 `gxfkit` 支持命令的正确性基准。请尽量提供足够信息，让维护者可以复现 diff。
+  - type: input
+    id: agat_version
+    attributes:
+      label: AGAT 版本
+      placeholder: "1.7.0"
+    validations:
+      required: true
+  - type: input
+    id: gxfkit_version
+    attributes:
+      label: gxfkit 版本
+      placeholder: "gxfkit 0.0.1"
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: 运行命令
+      description: 请粘贴 AGAT 命令、gxfkit 命令，以及 normalize/diff 命令。
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: 最小输入
+      description: 最好提供能复现问题的一小段输入；如果文件很大，可以附公开数据链接。
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: diff
+    attributes:
+      label: 标准化后的 diff
+      render: diff
+    validations:
+      required: false

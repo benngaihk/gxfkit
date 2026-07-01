@@ -1,0 +1,42 @@
+name: Bug 报告（中文）
+description: 报告崩溃、错误提示或异常 CLI 行为。
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题概述
+      description: 发生了什么？你原本期待什么结果？
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: gxfkit 版本
+      placeholder: "gxfkit 0.0.1"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: 运行命令
+      description: 请粘贴完整命令。
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: 输出或报错
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: data
+    attributes:
+      label: 最小输入
+      description: 如果可以，请粘贴能复现问题的一小段 GFF/GTF。
+      render: text
+    validations:
+      required: false
