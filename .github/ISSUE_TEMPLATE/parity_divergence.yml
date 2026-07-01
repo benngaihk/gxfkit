@@ -1,0 +1,47 @@
+name: AGAT parity divergence
+description: Report output that differs from AGAT.
+title: "parity: "
+labels: ["parity"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AGAT is the correctness oracle for supported commands. Please include
+        enough detail to reproduce the diff.
+  - type: input
+    id: agat_version
+    attributes:
+      label: AGAT version
+      placeholder: "1.7.0"
+    validations:
+      required: true
+  - type: input
+    id: gxfkit_version
+    attributes:
+      label: gxfkit version
+      placeholder: "gxfkit 0.0.1"
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Commands
+      description: Paste the AGAT command, gxfkit command, and normalizer/diff command.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Minimal input
+      description: A small reproducing snippet is best. Link to public data if the file is large.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: diff
+    attributes:
+      label: Normalized diff
+      render: diff
+    validations:
+      required: false

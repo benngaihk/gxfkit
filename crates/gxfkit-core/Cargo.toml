@@ -4,6 +4,12 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Core GFF/GTF model, parsing, and conversions for gxfkit"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/gxfkit-core"
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
 
 [dependencies]
 

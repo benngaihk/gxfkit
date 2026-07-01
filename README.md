@@ -13,9 +13,10 @@ documented, order-only normalization), a fraction of the wall-clock and memory.
 It stands on the shoulders of AGAT — AGAT remains the reference for correctness,
 and gxfkit treats its output as the gold standard.
 
-> **Status: alpha (M1).** One subcommand (`gff2gtf`), byte-identical to AGAT
-> after normalization on the human corpus (100%), 99% on yeast — with a
-> reproducible benchmark + parity harness. See [docs/ROADMAP.md](docs/ROADMAP.md).
+> **Status: alpha.** One subcommand (`gff2gtf`), byte-identical to AGAT after
+> normalization on the human corpus (100%), 99% on yeast — with a reproducible
+> benchmark + parity harness. Current focus: packaging and release distribution.
+> See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -43,15 +44,43 @@ and AGAT differ, the differences are enumerated with rationale in
 
 ## Install
 
-Pre-alpha — build from source for now:
+### Prebuilt binaries
+
+Tagged GitHub releases publish `.tar.gz` archives for:
+
+- Linux x86_64 (static musl)
+- Linux aarch64 (static musl)
+- macOS x86_64
+- macOS aarch64
+
+Download the archive for your platform from the
+[GitHub Releases](https://github.com/benngaihk/gxfkit/releases) page, then put
+the `gxfkit` binary on your `PATH`.
+
+```bash
+tar -xzf gxfkit-vX.Y.Z-linux-x86_64-static.tar.gz
+./gxfkit-vX.Y.Z-linux-x86_64-static/gxfkit version
+```
+
+### Cargo
+
+Once published to Crates.io:
+
+```bash
+cargo install gxfkit
+```
+
+### From source
 
 ```bash
 cargo build --release
 ./target/release/gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
 ```
 
-Planned distribution (M2): `cargo install gxfkit`, `pip install gxfkit`,
-`conda install -c bioconda gxfkit`.
+Planned distribution after the first source release: Bioconda
+(`conda install -c bioconda gxfkit`) and Python bindings (`pip install gxfkit`).
+
+Release maintainers: see [docs/RELEASE.md](docs/RELEASE.md).
 
 ### Windows build note
 
@@ -78,6 +107,20 @@ Gzip input is auto-detected, so `gxfkit gff2gtf -g ann.gff3.gz` and
 
 Flags mirror the AGAT script they replace (`agat_convert_sp_gff2gtf.pl`), so
 swapping it into an existing pipeline is near-zero cost.
+
+AGAT:
+
+```bash
+agat_convert_sp_gff2gtf.pl -g annotation.gff3 -o annotation.gtf
+```
+
+gxfkit:
+
+```bash
+gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
+```
+
+See [docs/FAQ.md](docs/FAQ.md) for gzip, parity, and pipeline notes.
 
 ---
 

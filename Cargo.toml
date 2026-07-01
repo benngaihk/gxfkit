@@ -7,7 +7,10 @@ version = "0.0.1"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/benngaihk/gxfkit"
+homepage = "https://github.com/benngaihk/gxfkit"
 authors = ["gxfkit contributors"]
+keywords = ["bioinformatics", "gff", "gtf", "genomics", "agat"]
+categories = ["command-line-utilities", "science"]
 
 [profile.release]
 opt-level = 3

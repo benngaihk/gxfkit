@@ -48,11 +48,18 @@ fn gff_line() -> impl Strategy<Value = String> {
         Just("biological_region"),
         Just("chromosome"),
     ];
-    (token(), token(), ftype, 1u64..10_000, 1u64..10_000, "[-+.?]", attrs()).prop_map(
-        |(seqid, source, ft, start, end, strand, a)| {
-            format!("{seqid}\t{source}\t{ft}\t{start}\t{end}\t.\t{strand}\t.\t{a}")
-        },
+    (
+        token(),
+        token(),
+        ftype,
+        1u64..10_000,
+        1u64..10_000,
+        "[-+.?]",
+        attrs(),
     )
+        .prop_map(|(seqid, source, ft, start, end, strand, a)| {
+            format!("{seqid}\t{source}\t{ft}\t{start}\t{end}\t.\t{strand}\t.\t{a}")
+        })
 }
 
 proptest! {

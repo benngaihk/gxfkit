@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a command, format edge case, or integration.
+title: "feature: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow would this unblock?
+    validations:
+      required: true
+  - type: textarea
+    id: agat
+    attributes:
+      label: AGAT equivalent
+      description: If this maps to an AGAT command or behavior, name it here.
+    validations:
+      required: false
+  - type: textarea
+    id: example
+    attributes:
+      label: Example command
+      render: bash
+    validations:
+      required: false

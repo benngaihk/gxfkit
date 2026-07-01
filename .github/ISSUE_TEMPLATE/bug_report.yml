@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a crash, incorrect error, or unexpected CLI behavior.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: gxfkit version
+      placeholder: "gxfkit 0.0.1"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: Paste the exact command you ran.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output or error
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: data
+    attributes:
+      label: Minimal input
+      description: If possible, paste a small GFF/GTF snippet that reproduces the issue.
+      render: text
+    validations:
+      required: false

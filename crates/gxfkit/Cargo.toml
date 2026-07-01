@@ -5,13 +5,18 @@ edition.workspace = true
 license.workspace = true
 description = "A fast, drop-in Rust reimplementation of AGAT's most-used GTF/GFF operations"
 repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/gxfkit"
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
 
 [[bin]]
 name = "gxfkit"
 path = "src/main.rs"
 
 [dependencies]
-gxfkit-core = { path = "../gxfkit-core" }
+gxfkit-core = { version = "0.0.1", path = "../gxfkit-core" }
 # Pure-Rust gzip (miniz_oxide backend) so .gff.gz input "just works" and the
 # build stays free of C/system dependencies.
 flate2 = "1"
