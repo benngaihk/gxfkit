@@ -38,6 +38,12 @@ verified against the registry until `gxfkit-core` is visible there.
 On machines that replace crates.io with a mirror in `~/.cargo/config.toml`, keep
 the explicit `--registry crates-io` flag for both dry-runs and real publishes.
 
+Alternatively, run the manual **Publish Crates.io** GitHub Actions workflow.
+It requires a repository secret named `CARGO_REGISTRY_TOKEN`, verifies the
+workspace version, publishes `gxfkit-core` first, waits for registry visibility,
+then publishes `gxfkit`. If the second step needs to be retried, rerun the
+workflow with the crate scope set to `gxfkit`.
+
 ## 3. GitHub Release
 
 Tag from a clean main branch:
