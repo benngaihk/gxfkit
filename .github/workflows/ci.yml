@@ -5,10 +5,14 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build-test:
     name: build + unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -16,14 +20,68 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test --all
-      - run: cargo build --release
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --all --locked
+      - run: cargo build --release --locked
+      - run: bash scripts/verify-local-cargo-install.sh
+      - run: bash scripts/test-local-cargo-install-verifier.sh
+      - run: bash scripts/test-crates-install-verifier.sh
+      - run: bash scripts/test-crate-metadata.sh
+      - run: python3 scripts/check-crate-metadata.py
+      - run: bash scripts/test-release-archive-verifier.sh
+      - run: bash scripts/test-release-artifacts.sh
+      - run: python3 scripts/check-release-artifacts.py
+      - run: bash scripts/test-github-release-verifier.sh
+      - run: bash scripts/test-github-release-parity.sh
+      - run: python3 scripts/check-bioconda-recipe.py
+      - run: bash scripts/test-bioconda-recipe.sh
+      - run: bash scripts/test-github-source-sha256.sh
+      - run: bash scripts/test-bioconda-install-verifier.sh
+      - run: bash scripts/test-public-installs-verifier.sh
+      - run: bash scripts/test-public-audit-log.sh
+      - run: bash scripts/test-shell-syntax.sh
+      - run: python3 scripts/test-python-syntax.py
+      - run: bash scripts/test-release-check.sh
+      - run: python3 scripts/check-release-check.py
+      - run: bash scripts/test-release-check-log.sh
+      - run: bash scripts/test-repo-hygiene.sh
+      - run: bash scripts/test-executable-scripts.sh
+      - run: bash scripts/test-public-install-audit-workflow.sh
+      - run: bash scripts/test-ci-workflow.sh
+      - run: bash scripts/test-release-workflow.sh
+      - run: bash scripts/test-publish-crates-workflow.sh
+      - run: bash scripts/test-workflow-policy.sh
+      - run: python3 scripts/check-workflow-policy.py
+      - run: bash scripts/test-publish-ref.sh
+      - run: bash scripts/test-benchmark-summarize.sh
+      - run: bash scripts/test-benchmark-summary.sh
+      - run: bash scripts/test-parity-doc.sh
+      - run: python3 scripts/check-parity-doc.py
+      - run: bash scripts/test-write-residuals.sh
+      - run: bash scripts/test-version-consistency.sh
+      - run: bash scripts/test-prepare-next-version.sh
+      - run: python3 scripts/check-version-consistency.py --scope cargo
+      - run: python3 scripts/check-version-consistency.py --scope bioconda
+      - run: bash scripts/test-release-status-doc.sh
+      - run: python3 scripts/check-release-status-doc.py
+      - run: bash scripts/test-install-docs.sh
+      - run: python3 scripts/check-install-docs.py
+      - run: bash scripts/test-release-doc.sh
+      - run: python3 scripts/check-release-doc.py
+      - run: bash scripts/test-release-notes.sh
+      - run: python3 scripts/check-release-notes.py
+      - run: bash scripts/test-release-readiness.sh
+      - run: bash scripts/test-release-evidence.sh
+      - run: bash scripts/test-maintainer-surfaces.sh
+      - run: python3 scripts/check-maintainer-surfaces.py
+      - run: bash scripts/test-package-files.sh
+      - run: PACKAGE_FILES_ALLOW_DIRTY=0 bash scripts/check-package-files.sh
       - run: cargo package -p gxfkit-core --locked
 
   parity:
     name: parity vs AGAT (gold standard)
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     # Correctness regression gate: the benchmark container produces AGAT (gold)
     # and gxfkit GTF, then summarize.py diffs them through the normalizer and
     # fails the build if any file's parity drops below MIN_PARITY.
@@ -32,21 +90,29 @@ jobs:
       - name: Download core corpus (parity-guaranteed Ensembl files)
         run: bash corpus/download.sh core
       - name: Build benchmark image
-        run: docker build -f benchmark/Dockerfile -t gxfkit-bench .
+        run: docker build --platform linux/amd64 -f benchmark/Dockerfile -t gxfkit-bench .
       - name: Produce AGAT + gxfkit outputs
         run: |
           mkdir -p benchmark/results
           docker run --rm \
+            --platform linux/amd64 \
             -v "$PWD/corpus/raw:/corpus:ro" \
             -v "$PWD/benchmark/results:/work/results" \
             -e RUNS=1 \
             gxfkit-bench
       - name: Check parity (gate)
-        env:
-          MIN_PARITY: "98"
-        run: python benchmark/summarize.py benchmark/results tests/parity/normalize.py
+        run: |
+          set +e
+          MIN_PARITY=100 python benchmark/summarize.py benchmark/results tests/parity/normalize.py
+          status=$?
+          set -e
+          python3 scripts/check-benchmark-summary.py --require
+          bash benchmark/write-residuals.sh benchmark/results
+          exit "$status"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: parity-results
-          path: benchmark/results/summary.tsv
+          path: |
+            benchmark/results/summary.tsv
+            benchmark/results/residuals/*.txt

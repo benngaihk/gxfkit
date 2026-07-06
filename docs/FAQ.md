@@ -27,6 +27,10 @@ gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
 ```
 
 `-i` and `--input` are also accepted as input aliases for pipeline convenience.
+`-o`/`--output` refuses to overwrite an existing file in the current source tree
+and public releases after `v0.0.1`, matching AGAT's safer default; remove stale
+outputs before rerunning a conversion. Public `v0.0.1` packages still overwrite
+existing output files.
 
 ## Does gzip input work?
 

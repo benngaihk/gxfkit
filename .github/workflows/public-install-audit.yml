@@ -1,0 +1,179 @@
+name: Public Install Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to verify, for example 0.0.2"
+        required: true
+        type: string
+      tag:
+        description: "Release tag to verify, for example v0.0.2"
+        required: true
+        type: string
+      channels:
+        description: "Space-separated channels: github-linux github-parity bioconda crates"
+        required: true
+        default: "github-linux github-parity bioconda crates"
+        type: string
+      allow_missing_crates:
+        description: "Allow Crates.io to be missing during a staged rollout"
+        required: true
+        default: false
+        type: boolean
+      verify_no_overwrite:
+        description: "Require public packages to refuse overwriting -o output"
+        required: true
+        default: true
+        type: boolean
+      bench_files:
+        description: "Corpus names for github-parity channel"
+        required: false
+        default: "human_chr1 human_chr21 yeast"
+        type: string
+      min_parity:
+        description: "Minimum parity percentage for github-parity channel"
+        required: false
+        default: "100"
+        type: string
+      crates_install_script:
+        description: "Repository-relative Crates.io install verifier script under scripts/*.sh"
+        required: false
+        default: "scripts/verify-crates-install.sh"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-install-audit-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: verify public installs
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Validate workflow inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+[.][0-9]+[.][0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "Version must look like X.Y.Z, got: $VERSION"
+            exit 1
+          fi
+          case "$RELEASE_TAG" in
+            v*) ;;
+            *)
+              echo "Release tag must start with v, got: $RELEASE_TAG"
+              exit 1
+              ;;
+          esac
+          if [ "${RELEASE_TAG#v}" != "$VERSION" ]; then
+            echo "Version and tag disagree: VERSION=$VERSION RELEASE_TAG=$RELEASE_TAG"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Verify inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          VERIFY_PUBLIC_INSTALL_CHANNELS: ${{ inputs.channels }}
+          VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES: ${{ inputs.allow_missing_crates && '1' || '0' }}
+          VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE: ${{ inputs.verify_no_overwrite && '1' || '0' }}
+          VERIFY_PUBLIC_INSTALLS_MIN_PARITY: ${{ inputs.min_parity }}
+          BENCH_FILES: ${{ inputs.bench_files }}
+          VERIFY_CRATES_INSTALL_SCRIPT: ${{ inputs.crates_install_script }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE_TAG" in
+            v*) ;;
+            *)
+              echo "Release tag must start with v, got: $RELEASE_TAG"
+              exit 1
+              ;;
+          esac
+          if [ "${RELEASE_TAG#v}" != "$VERSION" ]; then
+            echo "Version and tag disagree: VERSION=$VERSION RELEASE_TAG=$RELEASE_TAG"
+            exit 1
+          fi
+          VERIFY_PUBLIC_INSTALLS_DRY_RUN=1 bash scripts/verify-public-installs.sh >/dev/null
+      - name: Public install audit
+        env:
+          VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          VERIFY_PUBLIC_INSTALL_CHANNELS: ${{ inputs.channels }}
+          VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES: ${{ inputs.allow_missing_crates && '1' || '0' }}
+          VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE: ${{ inputs.verify_no_overwrite && '1' || '0' }}
+          VERIFY_PUBLIC_INSTALLS_MIN_PARITY: ${{ inputs.min_parity }}
+          BENCH_FILES: ${{ inputs.bench_files }}
+          VERIFY_CRATES_INSTALL_SCRIPT: ${{ inputs.crates_install_script }}
+        run: |
+          set -euo pipefail
+          set +e
+          bash scripts/verify-public-installs.sh 2>&1 | tee public-audit.log
+          audit_rc=${PIPESTATUS[0]}
+          set -e
+          echo "public-audit-exit-code=${audit_rc}" | tee -a public-audit.log
+          echo "Audit exit code is recorded; the log validation step enforces final status."
+      - name: Validate public audit log
+        if: always()
+        env:
+          VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          VERIFY_PUBLIC_INSTALL_CHANNELS: ${{ inputs.channels }}
+          VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES: ${{ inputs.allow_missing_crates && '1' || '0' }}
+          VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE: ${{ inputs.verify_no_overwrite && '1' || '0' }}
+          VERIFY_PUBLIC_INSTALLS_MIN_PARITY: ${{ inputs.min_parity }}
+          BENCH_FILES: ${{ inputs.bench_files }}
+          VERIFY_CRATES_INSTALL_SCRIPT: ${{ inputs.crates_install_script }}
+        run: |
+          set -euo pipefail
+          args=(
+            --version "$VERSION"
+            --tag "$RELEASE_TAG"
+            --channels "$VERIFY_PUBLIC_INSTALL_CHANNELS"
+            --verify-no-overwrite "$VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE"
+            --min-parity "$VERIFY_PUBLIC_INSTALLS_MIN_PARITY"
+            --bench-files "$BENCH_FILES"
+            --crates-install-script "$VERIFY_CRATES_INSTALL_SCRIPT"
+          )
+          if [ "$VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES" = 1 ]; then
+            args+=(--allow-missing-crates)
+          fi
+          python3 scripts/check-public-audit-log.py "${args[@]}" public-audit.log
+      - name: Generate release evidence
+        if: always()
+        env:
+          VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          VERIFY_PUBLIC_INSTALL_CHANNELS: ${{ inputs.channels }}
+          VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES: ${{ inputs.allow_missing_crates && '1' || '0' }}
+          VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE: ${{ inputs.verify_no_overwrite && '1' || '0' }}
+          VERIFY_PUBLIC_INSTALLS_MIN_PARITY: ${{ inputs.min_parity }}
+          BENCH_FILES: ${{ inputs.bench_files }}
+          VERIFY_CRATES_INSTALL_SCRIPT: ${{ inputs.crates_install_script }}
+        run: |
+          set -euo pipefail
+          scripts/release-evidence.sh \
+            --check-public \
+            --public-audit-log public-audit.log \
+            --public-audit-channels "$VERIFY_PUBLIC_INSTALL_CHANNELS" \
+            --public-audit-allow-missing-crates "$VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES" \
+            --public-audit-no-overwrite "$VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE" \
+            --public-audit-min-parity "$VERIFY_PUBLIC_INSTALLS_MIN_PARITY" \
+            --public-audit-bench-files "$BENCH_FILES" \
+            --public-audit-crates-install-script "$VERIFY_CRATES_INSTALL_SCRIPT" \
+            > release-evidence.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-evidence
+          path: |
+            release-evidence.md
+            public-audit.log

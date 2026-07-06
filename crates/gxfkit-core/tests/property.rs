@@ -44,7 +44,11 @@ fn gff_line() -> impl Strategy<Value = String> {
         Just("mRNA"),
         Just("exon"),
         Just("CDS"),
+        Just("start_codon"),
+        Just("stop_codon"),
         Just("five_prime_UTR"),
+        Just("three_prime_UTR"),
+        Just("UTR"),
         Just("biological_region"),
         Just("chromosome"),
     ];
@@ -88,8 +92,9 @@ proptest! {
         }
     }
 
-    /// Well-formed input always yields valid GTF: one output line per record,
-    /// each with 9 columns and a gene_id.
+    /// Well-formed input always yields valid GTF: AGAT-compatible conversion may
+    /// synthesize rows or skip unsupported roots, but every emitted line has 9
+    /// columns and a gene_id.
     #[test]
     fn wellformed_input_yields_valid_gtf(lines in prop::collection::vec(gff_line(), 0..40)) {
         let input = lines.join("\n");
@@ -98,9 +103,7 @@ proptest! {
         gff3_to_gtf(&recs, &mut out).expect("conversion");
         let s = String::from_utf8(out).expect("utf8 out");
 
-        let out_lines: Vec<&str> = s.lines().collect();
-        prop_assert_eq!(out_lines.len(), recs.len());
-        for l in out_lines {
+        for l in s.lines() {
             prop_assert_eq!(l.matches('\t').count(), 8, "9 columns expected: {}", l);
             prop_assert!(l.contains("gene_id \""), "missing gene_id: {}", l);
         }

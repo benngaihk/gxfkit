@@ -31,16 +31,17 @@
 
 - “AGAT 是正确性基准。”
 - “当前 alpha 阶段主要支持 `gff2gtf`。”
-- “在人类 chr1/chr21 语料上，标准化后与 AGAT 100% 一致。”
+- “在核心语料（人类 chr1、人类 chr21、酵母）上，标准化后与 AGAT 100% 一致。”
 - “已知差异记录在 `docs/PARITY.md`。”
-- “Bioconda/Crates.io/PyPI 是计划中的分发渠道，未发布前不要写成已可用。”
+- “Bioconda 和 GitHub Release 已可安装；Crates.io/PyPI 未发布前不要写成已可用。”
+- “公开 `v0.0.1` 包仍会覆盖已有输出文件；当前源码和下一版公开包才有拒绝覆盖保护。”
 
 避免使用这些表达：
 
 - “完全替代 AGAT。”
 - “所有 GFF/GTF 都兼容。”
 - “无风险替换生产流程。”
-- “Bioconda 已可安装”，除非 recipe 已经正式合并并验证。
+- “Crates.io/PyPI 已可安装”，除非对应发布和安装 smoke 已经验证。
 
 ## Issue 维护建议
 

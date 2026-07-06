@@ -27,6 +27,8 @@ gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
 ```
 
 `-i` 和 `--input` 也可作为输入参数别名，方便适配已有 pipeline。
+当前源码和 `v0.0.1` 之后的公开发布中，`-o`/`--output` 会拒绝覆盖已有文件，和 AGAT
+的安全默认行为一致；重复运行前请先处理旧输出。公开 `v0.0.1` 包仍会覆盖已有输出文件。
 
 正式替换前建议对自己的代表性数据跑一次 AGAT vs `gxfkit` diff，尤其是非 Ensembl
 来源的注释文件。
@@ -63,8 +65,11 @@ AGAT 的部分 sibling 排序来自内部 locus clustering / isoform 逻辑。`g
 
 ## 国内用户如何安装？
 
-当前最稳妥的方式是使用 GitHub Releases 的预编译包，或从源码编译。Bioconda 是计划中
-的分发渠道；在 recipe 正式合并前，不应假设 `conda install -c bioconda gxfkit` 已可用。
+当前最稳妥的方式是使用 GitHub Releases 的预编译包，或通过 Bioconda 安装：
+
+```bash
+conda install -c conda-forge -c bioconda gxfkit
+```
 
 如果 GitHub 下载不稳定，可以先在能访问 GitHub 的环境下载 release archive，然后放到
 内网或 HPC 软件目录中统一分发。

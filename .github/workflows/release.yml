@@ -7,12 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to publish, for example v0.1.0"
+        description: "Existing tag to publish, for example v0.0.2"
         required: true
         type: string
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -21,6 +25,7 @@ jobs:
   build:
     name: build ${{ matrix.package }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +50,34 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
+      - name: Verify release tag matches crate version
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE_TAG" in
+            v*) ;;
+            *)
+              echo "Release tag must start with v, got: $RELEASE_TAG"
+              exit 1
+              ;;
+          esac
+          git fetch --tags --force
+          if ! git rev-parse -q --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null; then
+            echo "Release tag must exist as a git tag: $RELEASE_TAG"
+            exit 1
+          fi
+          head="$(git rev-parse HEAD)"
+          tagged="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          if [ "$head" != "$tagged" ]; then
+            echo "Release checkout HEAD must match $RELEASE_TAG."
+            echo "HEAD=$head"
+            echo "$RELEASE_TAG=$tagged"
+            exit 1
+          fi
+          python3 scripts/check-version-consistency.py \
+            --scope cargo \
+            --expected-version "${RELEASE_TAG#v}"
       - name: Build release binary
         run: cargo build --release --locked --target ${{ matrix.target }} --bin gxfkit
       - name: Smoke test release binary
@@ -62,6 +95,11 @@ jobs:
             > smoke.gff3
           "$bin" gff2gtf -g smoke.gff3 -o smoke.gtf
           grep 'gene_id "g1"; transcript_id "t1";' smoke.gtf
+          if "$bin" gff2gtf -g smoke.gff3 -o smoke.gtf 2> overwrite.err; then
+            echo "gxfkit unexpectedly overwrote smoke.gtf"
+            exit 1
+          fi
+          grep 'refusing to overwrite' overwrite.err
       - name: Package archive
         env:
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -70,12 +108,21 @@ jobs:
         run: |
           set -euo pipefail
           name="gxfkit-${RELEASE_TAG}-${PACKAGE}"
+          rm -rf "dist/${name}"
           mkdir -p "dist/${name}"
           cp "target/${TARGET}/release/gxfkit" "dist/${name}/gxfkit"
           chmod +x "dist/${name}/gxfkit"
           cp README.md LICENSE "dist/${name}/"
           tar -C dist -czf "dist/${name}.tar.gz" "${name}"
           (cd dist && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256")
+      - name: Verify packaged archive
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          set -euo pipefail
+          VERIFY_RELEASE_ARCHIVE_EXPECTED_VERSION="${RELEASE_TAG#v}" \
+            bash scripts/verify-release-archive.sh "dist/gxfkit-${RELEASE_TAG}-${PACKAGE}.tar.gz"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package }}
@@ -86,17 +133,80 @@ jobs:
   publish:
     name: publish GitHub release
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: build
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
+      - name: Verify tag readiness
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          python3 scripts/release-readiness.py \
+            --phase tag \
+            --version "${RELEASE_TAG#v}"
+      - name: Verify release notes
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          python3 scripts/check-release-notes.py --expected-version "${RELEASE_TAG#v}"
+          test -f "docs/releases/${RELEASE_TAG}.md"
+      - name: Generate release evidence
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          set +e
+          RELEASE_CHECK_VERSION_SCOPE=cargo bash scripts/release-check.sh > release-check.log 2>&1
+          rc=$?
+          printf 'release-check-exit-code=%s\n' "$rc" >> release-check.log
+          set -e
+          VERSION="${RELEASE_TAG#v}" RELEASE_TAG="$RELEASE_TAG" \
+            scripts/release-evidence.sh --release-check-log release-check.log > release-evidence.md
+          if [ "$rc" -ne 0 ]; then
+            tail -180 release-check.log >&2
+            exit "$rc"
+          fi
+      - name: Verify downloaded archives
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          VERIFY_RELEASE_ARCHIVE_SMOKE: "0"
+        run: |
+          set -euo pipefail
+          python3 scripts/check-release-dist.py --tag "$RELEASE_TAG" --dist dist
+          shopt -s nullglob
+          archives=(dist/*.tar.gz)
+          if [ "${#archives[@]}" -eq 0 ]; then
+            echo "No release archives were downloaded."
+            exit 1
+          fi
+          for archive in "${archives[@]}"; do
+            VERIFY_RELEASE_ARCHIVE_EXPECTED_VERSION="${RELEASE_TAG#v}" \
+              bash scripts/verify-release-archive.sh "$archive"
+          done
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           draft: true
+          body_path: docs/releases/${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}.md
           fail_on_unmatched_files: true
           files: |
             dist/*.tar.gz
             dist/*.tar.gz.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-evidence
+          path: release-evidence.md

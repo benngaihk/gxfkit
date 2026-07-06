@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections import Counter
 
 _ATTR_RE = re.compile(r'(\w+)\s+"((?:[^"\\]|\\.)*)"\s*;')
 
@@ -72,6 +73,18 @@ def normalize_lines(text: str) -> list[str]:
     return [line for _, line in out]
 
 
+def multiset_parity(a: list[str], b: list[str]) -> tuple[int, int, int, float]:
+    """Return overlap/only-A/only-B and a symmetric multiset parity percentage."""
+    ca = Counter(a)
+    cb = Counter(b)
+    keys = set(ca) | set(cb)
+    matched = sum(min(ca[key], cb[key]) for key in keys)
+    only_a = sum(max(ca[key] - cb[key], 0) for key in keys)
+    only_b = sum(max(cb[key] - ca[key], 0) for key in keys)
+    denom = max(matched + only_a + only_b, 1)
+    return matched, only_a, only_b, 100.0 * matched / denom
+
+
 def main(argv: list[str]) -> int:
     if len(argv) == 2:
         with open(argv[1], encoding="utf-8") as fh:
@@ -95,13 +108,11 @@ def main(argv: list[str]) -> int:
             if shown > 80:
                 print("... (diff truncated)")
                 break
-        # also report counts + a parity rate (fraction of A's lines reproduced)
-        sa, sb = set(a), set(b)
-        matched = len(sa & sb)
-        denom = max(len(sa), 1)
-        rate = 100.0 * matched / denom
+        # Also report counts + a symmetric multiset parity rate. Extra gxfkit
+        # lines are divergences too because AGAT is the correctness oracle.
+        matched, only_a, only_b, rate = multiset_parity(a, b)
         print(f"\nSUMMARY: {len(a)} (A) vs {len(b)} (B) lines; "
-              f"matched={matched}; only-in-A={len(sa - sb)}, only-in-B={len(sb - sa)}; "
+              f"matched={matched}; only-in-A={only_a}, only-in-B={only_b}; "
               f"parity={rate:.2f}%", file=sys.stderr)
         return 1
     print(__doc__)

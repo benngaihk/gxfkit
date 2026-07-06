@@ -14,7 +14,7 @@ body:
     id: version
     attributes:
       label: gxfkit version
-      placeholder: "gxfkit 0.0.1"
+      placeholder: "gxfkit 0.0.2"
     validations:
       required: true
   - type: textarea

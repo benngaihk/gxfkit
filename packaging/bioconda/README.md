@@ -1,14 +1,17 @@
 # Bioconda Recipe Notes
 
-This directory holds a starter recipe for the future Bioconda submission.
+This directory mirrors the upstream Bioconda recipe inputs for `gxfkit`.
+Bioconda `gxfkit 0.0.1` is already public; keep this copy in sync when preparing
+future version bumps.
 
-Bioconda recipes live in the separate `bioconda-recipes` repository. After a
+Bioconda recipes live in the separate `bioconda-recipes` repository. After a new
 public GitHub release exists:
 
-1. Copy `recipe/` into a new `recipes/gxfkit/` directory in `bioconda-recipes`.
-2. Confirm the version and sha256 still match the public GitHub tag.
-3. Run Bioconda's local lint/build flow.
-4. Open the recipe PR.
+1. Update `recipe/` in this repository with the new version and source sha256.
+2. Copy the changed recipe into `recipes/gxfkit/` in `bioconda-recipes`.
+3. Confirm the version and sha256 still match the public GitHub tag.
+4. Run Bioconda's local lint/build flow.
+5. Open the version-bump PR.
 
 Use the GitHub source archive or a release archive with a fixed sha256. Do not
 point the recipe at a moving branch.

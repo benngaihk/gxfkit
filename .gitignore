@@ -14,6 +14,17 @@
 *.agat.log
 *.agat.stdout
 
+# Python / local test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Release evidence scratch artifacts
+/dist/
+/release-evidence.md
+/public-audit.log
+
 # OS / editor
 Thumbs.db
 .DS_Store

@@ -107,7 +107,7 @@ dependencies = [
 
 [[package]]
 name = "gxfkit"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "flate2",
  "gxfkit-core",
@@ -115,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "gxfkit-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "proptest",
 ]

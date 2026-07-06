@@ -13,9 +13,9 @@
 AGAT 仍然是本项目的正确性基准。`gxfkit` 的每个输出差异都应该被修复，或者在
 [docs/PARITY.md](docs/PARITY.md) 中记录清楚。
 
-> **当前状态：alpha。** 目前主要支持 `gff2gtf` 一个子命令；在人类 chr1/chr21
-> 语料上，经过顺序无关的标准化比较后与 AGAT 100% 一致；酵母语料为 99.05%，
-> 剩余差异已记录。当前重点是打包、发布和扩大兼容范围。
+> **当前状态：alpha。** 目前主要支持 `gff2gtf` 一个子命令；在核心语料
+>（人类 chr1、人类 chr21、酵母）上，经过顺序无关的标准化比较后与 AGAT 100%
+> 一致。当前重点是打包、发布和扩大兼容范围。
 
 ---
 
@@ -39,12 +39,13 @@ AGAT 仍然是本项目的正确性基准。`gxfkit` 的每个输出差异都应
 
 | 文件 | AGAT | gxfkit | 加速比 | AGAT 内存 | gxfkit 内存 | parity |
 |------|------|--------|--------|-----------|-------------|--------|
-| `human_chr1` | 78.47 s | 1.25 s | **62.8x** | 5.47 GB | 1.41 GB | 100.00% |
-| `human_chr21` | 12.52 s | 140 ms | **89.4x** | 935 MB | 194 MB | 100.00% |
-| `yeast` | 9.68 s | 120 ms | **80.7x** | 752 MB | 155 MB | 99.05% |
+| `human_chr1` | 47.19 s | 1.19 s | **39.7x** | 5.50 GB | 2.13 GB | 100.00% |
+| `human_chr21` | 6.94 s | 150 ms | **46.3x** | 967 MB | 300 MB | 100.00% |
+| `yeast` | 5.70 s | 100 ms | **57.0x** | 778 MB | 229 MB | 100.00% |
 
 这里的 `parity` 是把两个工具的输出都经过 `tests/parity/normalize.py` 后再比较：
-它会消除行顺序、属性顺序和空白差异，但不会掩盖真实的值差异。详见
+它会消除行顺序、属性顺序和空白差异，但不会掩盖真实的值差异；AGAT 中缺失的行和
+`gxfkit` 额外输出的行都会扣分。详见
 [docs/PARITY.md](docs/PARITY.md)。
 
 ---
@@ -68,6 +69,9 @@ tar -xzf gxfkit-vX.Y.Z-linux-x86_64-static.tar.gz
 ./gxfkit-vX.Y.Z-linux-x86_64-static/gxfkit version
 ```
 
+已发布的 `v0.0.1` 包早于“拒绝覆盖输出文件”保护；当前源码和 `v0.0.1` 之后的公开
+发布才应具备该行为。公开安装审计默认会验证 no-overwrite 和核心语料 parity。
+
 ### 从源码编译
 
 ```bash
@@ -75,11 +79,19 @@ cargo build --release
 ./target/release/gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
 ```
 
+### Bioconda
+
+```bash
+conda install -c conda-forge -c bioconda gxfkit
+```
+
+当前公开的 Bioconda 包是 `0.0.1`，可用于基础安装验证，但早于“拒绝覆盖输出文件”保护；
+判断某个 Bioconda 包能否作为严格生产证据前，请以发布状态文档为准。
+
 ### 计划中的分发方式
 
 项目正在准备更适合生信用户的安装入口：
 
-- Bioconda：`conda install -c bioconda gxfkit`
 - Crates.io：`cargo install gxfkit`
 - Python/PyO3 绑定：`pip install gxfkit`
 
@@ -101,7 +113,7 @@ powershell -File scripts/with-msvc-env.ps1 cargo build --release
 ```text
 gxfkit gff2gtf [-g <input.gff[.gz]>] [-o <output.gtf>] [--sanitize]
   -g, --gff <FILE>      输入 GFF3 文件，可为普通文本或 gzip，默认 stdin
-  -o, --output <FILE>   输出 GTF 文件，默认 stdout
+  -o, --output <FILE>   输出 GTF 文件；拒绝覆盖已有文件，默认 stdout
   --sanitize            跳过格式错误的数据行，并把诊断写到 stderr
 ```
 
@@ -111,6 +123,10 @@ gzip 会自动识别：
 gxfkit gff2gtf -g annotation.gff3.gz -o annotation.gtf
 zcat annotation.gff3.gz | gxfkit gff2gtf > annotation.gtf
 ```
+
+和 AGAT 一样，`gxfkit` 不会覆盖已有的 `-o/--output` 文件；重复运行前请先删除或重命名
+旧输出。这个说明对应当前源码和 `v0.0.1` 之后的发布；公开 `v0.0.1` 包仍会覆盖已有
+输出文件。
 
 默认模式会在遇到格式错误的数据行时停止转换，方便暴露 parity 问题。只有在你明确想
 跳过列数错误或坐标非法的记录、并通过 stderr 审计被跳过行时，才使用 `--sanitize`。

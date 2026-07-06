@@ -11,8 +11,6 @@ source:
 
 build:
   number: 0
-  run_exports:
-    - {{ pin_subpackage(name, max_pin="x.x") }}
 
 requirements:
   build:
@@ -24,15 +22,29 @@ requirements:
 test:
   commands:
     - gxfkit version
-    - gxfkit gff2gtf --help
+    - |
+      cat > smoke.gff3 <<'GFF'
+      ##gff-version 3
+      chr1	src	gene	1	100	.	+	.	ID=gene:g1
+      chr1	src	mRNA	1	100	.	+	.	ID=transcript:t1;Parent=gene:g1
+      chr1	src	exon	1	50	.	+	.	Parent=transcript:t1;exon_id=e1
+      GFF
+      gxfkit gff2gtf -g smoke.gff3 -o smoke.gtf
+      grep 'gene_id "g1"; transcript_id "t1";' smoke.gtf
+      if gxfkit gff2gtf -g smoke.gff3 -o smoke.gtf 2> overwrite.err; then
+        echo "gxfkit unexpectedly overwrote smoke.gtf"
+        exit 1
+      fi
+      grep 'refusing to overwrite' overwrite.err
 
 about:
   home: https://github.com/benngaihk/gxfkit
   license: MIT
+  license_family: MIT
   license_file:
     - LICENSE
     - THIRDPARTY.yml
-  summary: Fast Rust reimplementation of AGAT GFF/GTF operations
+  summary: Fast AGAT-compatible GFF/GTF command-line utilities
 
 extra:
   recipe-maintainers:

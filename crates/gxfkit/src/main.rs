@@ -4,12 +4,12 @@
 //! dependency tree minimal. Flags mirror the AGAT scripts they replace so that
 //! swapping `agat_convert_sp_gff2gtf.pl` for `gxfkit gff2gtf` is near-zero cost.
 
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::process::ExitCode;
 
 const USAGE: &str = "\
-gxfkit — fast GTF/GFF operations (drop-in subset of AGAT)
+gxfkit — fast GTF/GFF operations (AGAT-compatible subset)
 
 USAGE:
     gxfkit <SUBCOMMAND> [OPTIONS]
@@ -30,7 +30,7 @@ USAGE:
 
 OPTIONS:
     -g, --gff <FILE>      Input GFF3 file, plain or gzipped (default: stdin)
-    -o, --output <FILE>   Output GTF file (default: stdout)
+    -o, --output <FILE>   Output GTF file; refuses to overwrite (default: stdout)
     --sanitize            Skip malformed data records with stderr diagnostics
     -h, --help            Show this message
 
@@ -122,12 +122,29 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
     };
 
     let mut out: Box<dyn Write> = match output {
-        Some(path) => Box::new(BufWriter::new(File::create(&path)?)),
+        Some(path) => Box::new(BufWriter::new(create_output(&path)?)),
         None => Box::new(BufWriter::new(io::stdout().lock())),
     };
     gxfkit_core::convert::gff3_to_gtf(&records, &mut out)?;
     out.flush()?;
     Ok(())
+}
+
+fn create_output(path: &str) -> io::Result<File> {
+    OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|e| {
+            if e.kind() == io::ErrorKind::AlreadyExists {
+                io::Error::new(
+                    e.kind(),
+                    format!("output file already exists, refusing to overwrite: {path}"),
+                )
+            } else {
+                e
+            }
+        })
 }
 
 fn read_records<R: std::io::BufRead>(
