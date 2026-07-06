@@ -156,6 +156,25 @@ def cargo_dependency_version() -> str | None:
     return version if isinstance(version, str) else None
 
 
+def cargo_versions_from_ref(ref: str) -> tuple[str | None, str | None]:
+    root_text = git("show", f"{ref}:Cargo.toml")
+    cli_text = git("show", f"{ref}:crates/gxfkit/Cargo.toml")
+    if root_text is None or cli_text is None:
+        return (None, None)
+    try:
+        root_manifest = tomllib.loads(root_text)
+        cli_manifest = tomllib.loads(cli_text)
+    except tomllib.TOMLDecodeError:
+        return (None, None)
+    version = root_manifest.get("workspace", {}).get("package", {}).get("version")
+    dep = cli_manifest.get("dependencies", {}).get("gxfkit-core")
+    dep_version = dep.get("version") if isinstance(dep, dict) else None
+    return (
+        version if isinstance(version, str) else None,
+        dep_version if isinstance(dep_version, str) else None,
+    )
+
+
 def result(status: str, name: str, detail: str) -> Result:
     return Result(status=status, name=name, detail=detail)
 
@@ -316,7 +335,13 @@ def check_local_tag_guards(version: str) -> list[Result]:
     ]
 
 
-def check_source_candidate(version: str, allow_dirty: bool, source_version: str | None = None) -> list[Result]:
+def check_source_candidate(
+    version: str,
+    allow_dirty: bool,
+    source_version: str | None = None,
+    *,
+    phase: str = "tag",
+) -> list[Result]:
     checks: list[Result] = []
     actual_source_version = source_version or version
     dep_version = cargo_dependency_version()
@@ -351,6 +376,25 @@ def check_source_candidate(version: str, allow_dirty: bool, source_version: str 
         checks.append(result("PASS", "publish ref", f"{tag} does not exist yet"))
     elif head == tagged:
         checks.append(result("PASS", "publish ref", f"HEAD matches {tag}"))
+    elif phase == "public":
+        tag_version, tag_dep_version = cargo_versions_from_ref(tag)
+        if tag_version == version and tag_dep_version == version:
+            checks.append(
+                result(
+                    "PASS",
+                    "publish ref",
+                    f"{tag} points at release commit {tagged[:12]}; publish Crates.io from {tag}",
+                )
+            )
+        else:
+            checks.append(
+                result(
+                    "FAIL",
+                    "publish ref",
+                    f"{tag} cargo metadata mismatch: workspace={tag_version or '<missing>'}, "
+                    f"gxfkit-core dependency={tag_dep_version or '<missing>'}",
+                )
+            )
     else:
         checks.append(result("FAIL", "publish ref", f"{tag} points at a different commit"))
 
@@ -795,14 +839,25 @@ def run_public_audit(version: str, tag: str) -> Result:
 
 def check_public_release(version: str, args: argparse.Namespace, source_version: str) -> list[Result]:
     tag = f"v{version}"
-    checks = check_source_candidate(version, args.allow_dirty, source_version)
+    checks = check_source_candidate(version, args.allow_dirty, source_version, phase="public")
 
     tagged = git("rev-parse", "-q", "--verify", f"refs/tags/{tag}^{{commit}}")
     head = git("rev-parse", "HEAD")
     if tagged and head == tagged:
         checks.append(result("PASS", "release tag", f"{tag} exists at HEAD"))
     elif tagged:
-        checks.append(result("FAIL", "release tag", f"{tag} exists but is not HEAD"))
+        tag_version, tag_dep_version = cargo_versions_from_ref(tag)
+        if tag_version == version and tag_dep_version == version:
+            checks.append(result("PASS", "release tag", f"{tag} exists at release commit {tagged[:12]}"))
+        else:
+            checks.append(
+                result(
+                    "FAIL",
+                    "release tag",
+                    f"{tag} cargo metadata mismatch: workspace={tag_version or '<missing>'}, "
+                    f"gxfkit-core dependency={tag_dep_version or '<missing>'}",
+                )
+            )
     else:
         checks.append(result("PENDING", "release tag", f"{tag} does not exist"))
 

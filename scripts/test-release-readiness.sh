@@ -405,6 +405,32 @@ grep -F "VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE='1'" "$tmp/public-pending.out" >/de
 grep -F "VERIFY_PUBLIC_INSTALLS_MIN_PARITY='100'" "$tmp/public-pending.out" >/dev/null
 grep -F "BENCH_FILES='human_chr1 human_chr21 yeast'" "$tmp/public-pending.out" >/dev/null
 
+fixture="$tmp/public-post-tag-metadata"
+make_fixture "$fixture" 1.2.3
+git -C "$fixture" tag v1.2.3
+perl -0pi -e 's/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/' \
+  "$fixture/packaging/bioconda/recipe/meta.yaml"
+git -C "$fixture" add .
+git -C "$fixture" commit -q -m post-tag-bioconda-metadata
+expect_fail \
+  post-tag-tag-phase \
+  "FAIL    publish ref: v1.2.3 points at a different commit" \
+  env GXFKIT_ROOT="$fixture" "$PY" "$ROOT/scripts/release-readiness.py" --phase tag
+GXFKIT_ROOT="$fixture" "$PY" "$ROOT/scripts/release-readiness.py" --phase public \
+  >"$tmp/public-post-tag-metadata.out" || true
+grep -F "PASS    publish ref: v1.2.3 points at release commit" \
+  "$tmp/public-post-tag-metadata.out" >/dev/null
+grep -F "publish Crates.io from v1.2.3" "$tmp/public-post-tag-metadata.out" >/dev/null
+grep -F "PASS    release tag: v1.2.3 exists at release commit" \
+  "$tmp/public-post-tag-metadata.out" >/dev/null
+grep -F "PASS    bioconda release metadata: recipe is 1.2.3" \
+  "$tmp/public-post-tag-metadata.out" >/dev/null
+if grep -F "FAIL    publish ref:" "$tmp/public-post-tag-metadata.out" >/dev/null; then
+  echo "public phase unexpectedly failed publish ref for post-tag metadata commit" >&2
+  cat "$tmp/public-post-tag-metadata.out" >&2
+  exit 1
+fi
+
 fixture="$tmp/strict-public-audit-env"
 make_fixture "$fixture" 1.2.3
 cp "$ROOT/scripts/check-public-audit-log.py" "$fixture/scripts/check-public-audit-log.py"
