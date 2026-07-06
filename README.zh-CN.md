@@ -85,8 +85,8 @@ cargo build --release
 conda install -c conda-forge -c bioconda gxfkit
 ```
 
-Bioconda 包元数据已经列出 `0.0.2`，但干净 solver 安装验证仍在等待 conda repodata
-传播；判断某个 Bioconda 包能否作为严格生产证据前，请以发布状态文档为准。
+当前公开的 Bioconda 包是 `0.0.2`，并已通过干净安装、smoke 转换和拒绝覆盖验证；
+判断所有公开渠道能否作为严格生产证据前，请以发布状态文档为准。
 
 ### 计划中的分发方式
 

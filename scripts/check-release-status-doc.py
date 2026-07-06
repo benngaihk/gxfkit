@@ -61,7 +61,7 @@ def main() -> int:
     tag = f"v{version}"
     text = DOC.read_text(encoding="utf-8")
     github_version = status_version(text, "Current public GitHub Release")
-    bioconda_metadata_version = status_version(text, "Current public Bioconda metadata")
+    bioconda_version = status_version(text, "Current public Bioconda")
     cargo_candidate_version = status_version(text, "Current Cargo release candidate")
     errors: list[str] = []
 
@@ -97,10 +97,10 @@ def main() -> int:
     require(text, f"Anaconda package metadata lists Bioconda `gxfkit {version}` files", errors)
     require(text, "linux-64", errors)
     require(text, "osx-64", errors)
-    require(text, "REVIEW_REQUIRED", errors)
-    require(text, f"Clean Bioconda install verification for `{version}` is still pending conda repodata propagation", errors)
+    require(text, f"Bioconda `gxfkit {version}` passed clean Linux install verification", errors)
+    require(text, "smoke conversion", errors)
+    require(text, "no-overwrite verification", errors)
     require(text, f"VERSION={version} bash scripts/verify-bioconda-install.sh", errors)
-    require(text, "bioconda-recipes#66930", errors)
     require(text, f"Crates.io `gxfkit-core {version}` is not published", errors)
     require(text, f"Crates.io `gxfkit {version}` is not published", errors)
     require(text, "blocked by missing credentials", errors)
@@ -113,8 +113,8 @@ def main() -> int:
         errors.append(f"Current public GitHub Release {github_version} != workspace version {version}")
     if cargo_candidate_version != version:
         errors.append(f"Current Cargo release candidate {cargo_candidate_version} != workspace version {version}")
-    if bioconda_metadata_version != version:
-        errors.append(f"Current public Bioconda metadata {bioconda_metadata_version} != workspace version {version}")
+    if bioconda_version != version:
+        errors.append(f"Current public Bioconda {bioconda_version} != workspace version {version}")
 
     stale_workspace_claim = re.search(
         r"current working tree still reports workspace version `([^`]+)`",
@@ -135,7 +135,7 @@ def main() -> int:
         require(text, f"Crates.io `gxfkit {version}` is not published", errors)
         require(text, f"The existing `{tag}` tag points at the release-candidate commit. It must not be moved.", errors)
         require(text, "the next public release must bump the workspace version", errors)
-    require(text, f"Current public Bioconda metadata: `{version}`", errors)
+    require(text, f"Current public Bioconda: `{version}`", errors)
     require(text, f"Current Cargo release candidate: `{version}`", errors)
     require(text, "offline install/package smoke checks", errors)
     require(text, "python3 scripts/check-release-check.py", errors)

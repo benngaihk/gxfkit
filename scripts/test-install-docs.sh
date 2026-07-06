@@ -60,9 +60,9 @@ cargo install gxfkit
 conda install -c conda-forge -c bioconda gxfkit
 ```
 
-Bioconda package metadata now lists `0.0.2`, but clean solver install
-verification is still pending conda repodata propagation. Use the release status
-before treating a Bioconda package as strict-audit production evidence.
+The current public Bioconda package is `0.0.2` and has passed clean install,
+smoke conversion, and no-overwrite verification. Use the release status before
+treating all public channels as strict-audit production evidence.
 MD
   cat >"$dir/README.zh-CN.md" <<'MD'
 已发布的 `v0.0.1` 包早于“拒绝覆盖输出文件”保护。
@@ -72,8 +72,8 @@ MD
 conda install -c conda-forge -c bioconda gxfkit
 ```
 
-Bioconda 包元数据已经列出 `0.0.2`，但干净 solver 安装验证仍在等待 conda repodata 传播；
-判断某个 Bioconda 包能否作为严格生产证据前，请以发布状态文档为准。
+当前公开的 Bioconda 包是 `0.0.2`，并已通过干净安装、smoke 转换和拒绝覆盖验证；
+判断所有公开渠道能否作为严格生产证据前，请以发布状态文档为准。
 
 ### 计划中的分发方式
 
@@ -110,20 +110,20 @@ expect_fail \
 
 fixture="$tmp/missing-bioconda-version-boundary"
 make_fixture "$fixture"
-perl -0pi -e 's/Bioconda package metadata now lists `0\.0\.2`, but clean solver install\nverification is still pending conda repodata propagation\.//' \
+perl -0pi -e 's/The current public Bioconda package is `0\.0\.2` and has passed clean install,\nsmoke conversion, and no-overwrite verification\.//' \
   "$fixture/README.md"
 expect_fail \
   missing-bioconda-version-boundary \
-  'README.md must mention: Bioconda package metadata now lists `0.0.2`' \
+  'README.md must mention: The current public Bioconda package is `0.0.2`' \
   env GXFKIT_ROOT="$fixture" "$PY" "$ROOT/scripts/check-install-docs.py"
 
 fixture="$tmp/missing-zh-bioconda-boundary"
 make_fixture "$fixture"
-perl -0pi -e 's/Bioconda 包元数据已经列出 `0\.0\.2`，但干净 solver 安装验证仍在等待 conda repodata 传播；\n判断某个 Bioconda 包能否作为严格生产证据前，请以发布状态文档为准。//' \
+perl -0pi -e 's/当前公开的 Bioconda 包是 `0\.0\.2`，并已通过干净安装、smoke 转换和拒绝覆盖验证；\n判断所有公开渠道能否作为严格生产证据前，请以发布状态文档为准。//' \
   "$fixture/README.zh-CN.md"
 expect_fail \
   missing-zh-bioconda-boundary \
-  'README.zh-CN.md must mention: Bioconda 包元数据已经列出 `0.0.2`' \
+  'README.zh-CN.md must mention: 当前公开的 Bioconda 包是 `0.0.2`' \
   env GXFKIT_ROOT="$fixture" "$PY" "$ROOT/scripts/check-install-docs.py"
 
 fixture="$tmp/missing-zh-warning"

@@ -44,8 +44,7 @@ TOML
   cat >"$dir/docs/releases/v1.2.3.md" <<'MD'
 # gxfkit v1.2.3 Release Notes
 
-Status: public GitHub Release. Bioconda package files are listed but clean
-install verification is still pending conda repodata propagation; Crates.io
+Status: public GitHub Release and verified Bioconda package. Crates.io
 publication is still pending maintainer credentials. Full public readiness is
 tracked by scripts/release-evidence.sh --check-public and the strict public
 install audit.
@@ -55,6 +54,10 @@ human_chr1, human_chr21, and yeast. It includes the no-overwrite behavior.
 It also keeps a deterministic local `release-check.sh` contract guard.
 
 ## Install Now
+
+```bash
+conda install -c conda-forge -c bioconda gxfkit=1.2.3
+```
 
 ```bash
 set +e
@@ -77,13 +80,6 @@ scripts/release-evidence.sh --check-public > release-evidence.md
 ```
 
 ## Pending Install Channels
-
-Bioconda `1.2.3` package files are listed by Anaconda, but clean install
-verification is still pending conda repodata propagation.
-
-```bash
-conda install -c conda-forge -c bioconda gxfkit=1.2.3
-```
 
 Crates.io `1.2.3` is pending maintainer credentials.
 

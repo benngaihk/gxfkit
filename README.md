@@ -94,9 +94,9 @@ path until this section stops being conditional.
 conda install -c conda-forge -c bioconda gxfkit
 ```
 
-Bioconda package metadata now lists `0.0.2`, but clean solver install
-verification is still pending conda repodata propagation. Use the release status
-before treating a Bioconda package as strict-audit production evidence.
+The current public Bioconda package is `0.0.2` and has passed clean install,
+smoke conversion, and no-overwrite verification. Use the release status before
+treating all public channels as strict-audit production evidence.
 
 ### From source
 
