@@ -44,6 +44,8 @@ make_repo() {
   cat >"$dir/Cargo.toml" <<TOML
 [workspace]
 members = []
+
+[workspace.package]
 version = "$version"
 TOML
 }
@@ -53,15 +55,20 @@ write_good_doc() {
   cat >"$dir/docs/RELEASE-STATUS.md" <<'MD'
 # Release Status
 
-## Current public version: `0.0.1`
+## Current public GitHub Release: `0.0.2`
 
-- GitHub Release `v0.0.1` exists and its release archive passed the basic
-  version/conversion smoke used before the strict no-overwrite audit. This was
-  re-verified on 2026-07-06 with:
+- GitHub Release `v0.0.2` exists, is public, and is not a prerelease.
+- The release has the expected eight assets.
+- The release was verified on 2026-07-06 with:
 
   ```bash
-  RELEASE_TAG=v0.0.1 VERIFY_RELEASE_ARCHIVE_NO_OVERWRITE=0 bash scripts/verify-github-release-install.sh
+  RELEASE_TAG=v0.0.2 bash scripts/verify-github-release-install.sh
+  RELEASE_TAG=v0.0.2 bash scripts/verify-github-release-linux-docker.sh
+  RELEASE_TAG=v0.0.2 BENCH_FILES="human_chr1 human_chr21 yeast" bash scripts/verify-github-release-parity.sh
   ```
+
+## Current public Bioconda: `0.0.1`
+
 - Bioconda `gxfkit 0.0.1` exists and passed the basic version/conversion smoke
   used before the strict no-overwrite audit. This was re-verified from a clean
   micromamba container on 2026-07-06. The upstream recipe PR
@@ -72,21 +79,37 @@ write_good_doc() {
   ```bash
   VERSION=0.0.1 VERIFY_BIOCONDA_NO_OVERWRITE=0 bash scripts/verify-bioconda-install.sh
   ```
-- Crates.io `gxfkit 0.0.1` is not published.
+- Bioconda `gxfkit 0.0.2` is not public yet. The upstream update PR is open:
+  [bioconda-recipes#66930](https://github.com/bioconda/bioconda-recipes/pull/66930).
+
+## Current public Crates.io: none
+
+- Crates.io `gxfkit-core 0.0.2` is not published.
+- Crates.io `gxfkit 0.0.2` is not published.
+- Publishing is currently blocked by missing credentials. The local environment
+  did not have `CARGO_REGISTRY_TOKEN`, `~/.cargo/credentials.toml`, or
+  `~/.cargo/credentials`, and the GitHub repository had no configured secrets at
+  the time this status was recorded.
 
 ## Current Cargo release candidate: `0.0.2`
 
-The Cargo workspace may be ahead of the public version during tag preparation.
 The local release preflight uses offline install/package smoke checks and
 `python3 scripts/check-release-check.py` guards that deterministic local
 preflight contract.
+
+The existing `v0.0.2` tag points at the release-candidate commit. It must not be
+moved. Do not publish Crates.io `0.0.2` from `main` after the Bioconda metadata
+commit, because the existing `v0.0.2` tag points at an older commit. Publishing
+must use the existing `v0.0.2` tag, or the next public release must bump the
+workspace version before publishing.
+
+## Important `0.0.1` boundary
 
 The existing `v0.0.1` tag points at an older commit than this release-hardening
 work. Do not publish Crates.io `gxfkit 0.0.1` from any commit other than the
 existing `v0.0.1` tag.
 
-The next public release must bump the workspace version and pass the strict
-public install audit:
+## Remaining `0.0.2` public closure
 
 ```bash
 python3 scripts/release-readiness.py --phase public --check-public --run-public-audit
@@ -94,30 +117,33 @@ VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates" \
 VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=0 \
 VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1 \
 VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100 \
-VERSION=X.Y.Z RELEASE_TAG=vX.Y.Z bash scripts/verify-public-installs.sh
+VERSION=0.0.2 RELEASE_TAG=v0.0.2 bash scripts/verify-public-installs.sh
 ```
 
 Run the strict audit through `release-readiness --run-public-audit` so the
 captured audit log is also verified.
-
-## Before the next public release
-
-1. Bump the workspace version.
-2. Cut a new tag.
 MD
 }
 
-repo="$tmp/mismatch"
-make_repo "$repo" 0.0.1
+repo="$tmp/current"
+make_repo "$repo" 0.0.2
 write_good_doc "$repo"
 git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
 git -C "$repo" commit -q -m initial
-git -C "$repo" tag v0.0.1
-perl -0pi -e 's/version = "0\.0\.1"/version = "0.0.2"/' "$repo/Cargo.toml"
+GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py" >"$tmp/current.out"
+grep -F "verified release status doc" "$tmp/current.out" >/dev/null
+
+repo="$tmp/post-tag-metadata"
+make_repo "$repo" 0.0.2
+write_good_doc "$repo"
+git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
+git -C "$repo" commit -q -m release-candidate
+git -C "$repo" tag v0.0.2
+echo "# post-tag metadata" >>"$repo/Cargo.toml"
 git -C "$repo" add Cargo.toml
-git -C "$repo" commit -q -m "prepare 0.0.2"
-GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py" >"$tmp/source-ahead.out"
-grep -F "verified release status doc" "$tmp/source-ahead.out" >/dev/null
+git -C "$repo" commit -q -m "post-tag metadata"
+GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py" >"$tmp/post-tag-metadata.out"
+grep -F "verified release status doc" "$tmp/post-tag-metadata.out" >/dev/null
 
 repo="$tmp/stale"
 make_repo "$repo" 0.0.2
@@ -145,40 +171,64 @@ expect_fail \
   "must not mention: default public install smoke" \
   env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
 
-repo="$tmp/missing-github-reverify"
+repo="$tmp/missing-github-release"
 make_repo "$repo" 0.0.2
 write_good_doc "$repo"
-perl -0pi -e 's/ This was\n  re-verified on 2026-07-06 with:\n\n  ```bash\n  RELEASE_TAG=v0\.0\.1 VERIFY_RELEASE_ARCHIVE_NO_OVERWRITE=0 bash scripts\/verify-github-release-install\.sh\n  ```//' \
+perl -0pi -e 's/- GitHub Release `v0\.0\.2` exists, is public, and is not a prerelease\.//' \
   "$repo/docs/RELEASE-STATUS.md"
 git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
 git -C "$repo" commit -q -m initial
 expect_fail \
-  missing-github-reverify \
-  "must mention: RELEASE_TAG=v0.0.1 VERIFY_RELEASE_ARCHIVE_NO_OVERWRITE=0 bash scripts/verify-github-release-install.sh" \
+  missing-github-release \
+  'must mention: GitHub Release `v0.0.2` exists, is public, and is not a prerelease' \
   env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
 
-repo="$tmp/missing-bioconda-reverify"
+repo="$tmp/missing-github-parity"
 make_repo "$repo" 0.0.2
 write_good_doc "$repo"
-perl -0pi -e 's/ This was re-verified from a clean\n  micromamba container on 2026-07-06\. The upstream recipe PR\n  \[bioconda-recipes#66815\]\(https:\/\/github\.com\/bioconda\/bioconda-recipes\/pull\/66815\)\n  is merged, so this is a public Bioconda package state rather than only a local\n  recipe expectation\. Re-verify the installed package with:\n\n  ```bash\n  VERSION=0\.0\.1 VERIFY_BIOCONDA_NO_OVERWRITE=0 bash scripts\/verify-bioconda-install\.sh\n  ```//' \
+perl -0pi -e 's/  RELEASE_TAG=v0\.0\.2 BENCH_FILES="human_chr1 human_chr21 yeast" bash scripts\/verify-github-release-parity\.sh\n//' \
   "$repo/docs/RELEASE-STATUS.md"
 git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
 git -C "$repo" commit -q -m initial
 expect_fail \
-  missing-bioconda-reverify \
-  "must mention: re-verified from a clean micromamba container" \
+  missing-github-parity \
+  'must mention: RELEASE_TAG=v0.0.2 BENCH_FILES="human_chr1 human_chr21 yeast" bash scripts/verify-github-release-parity.sh' \
   env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
 
 repo="$tmp/missing-bioconda-pr"
 make_repo "$repo" 0.0.2
 write_good_doc "$repo"
-perl -0pi -e 's/ The upstream recipe PR\n  \[bioconda-recipes#66815\]\(https:\/\/github\.com\/bioconda\/bioconda-recipes\/pull\/66815\)\n  is merged, so this is a public Bioconda package state rather than only a local\n  recipe expectation\.//' \
+perl -0pi -e 's/\[bioconda-recipes#66930\]\(https:\/\/github\.com\/bioconda\/bioconda-recipes\/pull\/66930\)//' \
   "$repo/docs/RELEASE-STATUS.md"
 git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
 git -C "$repo" commit -q -m initial
 expect_fail \
   missing-bioconda-pr \
-  "must mention: bioconda-recipes#66815" \
+  "must mention: bioconda-recipes#66930" \
+  env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
+
+repo="$tmp/missing-crates-credentials"
+make_repo "$repo" 0.0.2
+write_good_doc "$repo"
+perl -0pi -e 's/Publishing is currently blocked by missing credentials\.//' \
+  "$repo/docs/RELEASE-STATUS.md"
+git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
+git -C "$repo" commit -q -m initial
+expect_fail \
+  missing-crates-credentials \
+  "must mention: blocked by missing credentials" \
+  env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
+
+repo="$tmp/bad-bioconda-version"
+make_repo "$repo" 0.0.2
+write_good_doc "$repo"
+perl -0pi -e 's/## Current public Bioconda: `0\.0\.1`/## Current public Bioconda: `0.0.2`/' \
+  "$repo/docs/RELEASE-STATUS.md"
+git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
+git -C "$repo" commit -q -m initial
+expect_fail \
+  bad-bioconda-version \
+  "Current public Bioconda should not be the workspace version until 0.0.2 is public" \
   env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
 
 repo="$tmp/occupied-version"
@@ -186,7 +236,11 @@ make_repo "$repo" 0.0.1
 cat >"$repo/docs/RELEASE-STATUS.md" <<'MD'
 # Release Status
 
-## Current public version: `0.0.1`
+## Current public GitHub Release: `0.0.1`
+
+## Current public Bioconda: `0.0.0`
+
+## Current Cargo release candidate: `0.0.1`
 MD
 git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
 git -C "$repo" commit -q -m initial

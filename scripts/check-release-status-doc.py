@@ -35,10 +35,10 @@ def workspace_version() -> str:
     return match.group(1)
 
 
-def current_public_version(text: str) -> str:
-    match = re.search(r"(?m)^## Current public version: `([^`]+)`$", text)
+def status_version(text: str, label: str) -> str:
+    match = re.search(rf"(?m)^## {re.escape(label)}: `([^`]+)`$", text)
     if not match:
-        raise RuntimeError("docs/RELEASE-STATUS.md is missing current public version")
+        raise RuntimeError(f"docs/RELEASE-STATUS.md is missing {label}")
     return match.group(1)
 
 
@@ -60,15 +60,29 @@ def main() -> int:
     version = workspace_version()
     tag = f"v{version}"
     text = DOC.read_text(encoding="utf-8")
-    public_version = current_public_version(text)
+    github_version = status_version(text, "Current public GitHub Release")
+    bioconda_public_version = status_version(text, "Current public Bioconda")
+    cargo_candidate_version = status_version(text, "Current Cargo release candidate")
     errors: list[str] = []
 
     forbid(text, "default public install smoke", errors)
     require(text, "basic version/conversion smoke", errors)
     require(text, "strict no-overwrite audit", errors)
+    require(text, f"GitHub Release `{tag}` exists, is public, and is not a prerelease", errors)
+    require(text, "expected eight assets", errors)
     require(
         text,
-        "RELEASE_TAG=v0.0.1 VERIFY_RELEASE_ARCHIVE_NO_OVERWRITE=0 bash scripts/verify-github-release-install.sh",
+        f"RELEASE_TAG={tag} bash scripts/verify-github-release-install.sh",
+        errors,
+    )
+    require(
+        text,
+        f"RELEASE_TAG={tag} bash scripts/verify-github-release-linux-docker.sh",
+        errors,
+    )
+    require(
+        text,
+        f'RELEASE_TAG={tag} BENCH_FILES="human_chr1 human_chr21 yeast" bash scripts/verify-github-release-parity.sh',
         errors,
     )
     require(text, "re-verified from a clean micromamba container", errors)
@@ -77,9 +91,25 @@ def main() -> int:
     require(text, "public Bioconda package state", errors)
     require(
         text,
-        "VERSION=0.0.1 VERIFY_BIOCONDA_NO_OVERWRITE=0 bash scripts/verify-bioconda-install.sh",
+        f"VERSION={bioconda_public_version} VERIFY_BIOCONDA_NO_OVERWRITE=0 bash scripts/verify-bioconda-install.sh",
         errors,
     )
+    require(text, f"Bioconda `gxfkit {version}` is not public yet", errors)
+    require(text, "bioconda-recipes#66930", errors)
+    require(text, f"Crates.io `gxfkit-core {version}` is not published", errors)
+    require(text, f"Crates.io `gxfkit {version}` is not published", errors)
+    require(text, "blocked by missing credentials", errors)
+    require(text, "CARGO_REGISTRY_TOKEN", errors)
+    require(text, "~/.cargo/credentials.toml", errors)
+    require(text, "~/.cargo/credentials", errors)
+    require(text, "GitHub repository had no configured secrets", errors)
+
+    if github_version != version:
+        errors.append(f"Current public GitHub Release {github_version} != workspace version {version}")
+    if cargo_candidate_version != version:
+        errors.append(f"Current Cargo release candidate {cargo_candidate_version} != workspace version {version}")
+    if bioconda_public_version == version:
+        errors.append("Current public Bioconda should not be the workspace version until 0.0.2 is public")
 
     stale_workspace_claim = re.search(
         r"current working tree still reports workspace version `([^`]+)`",
@@ -97,15 +127,16 @@ def main() -> int:
     if tag_commit and head and tag_commit != head:
         require(text, f"existing `{tag}` tag points at an older commit", errors)
         require(text, f"Do not publish Crates.io", errors)
-        require(text, f"`gxfkit {version}` is not published", errors)
-        require(text, "The next public release must bump the workspace version", errors)
-    elif version != public_version:
-        require(text, f"Current public version: `{public_version}`", errors)
+        require(text, f"Crates.io `gxfkit {version}` is not published", errors)
+        require(text, f"The existing `{tag}` tag points at the release-candidate commit. It must not be moved.", errors)
+        require(text, "the next public release must bump the workspace version", errors)
+    if version != bioconda_public_version:
+        require(text, f"Current public Bioconda: `{bioconda_public_version}`", errors)
         require(text, f"Current Cargo release candidate: `{version}`", errors)
         require(text, "offline install/package smoke checks", errors)
         require(text, "python3 scripts/check-release-check.py", errors)
         require(text, "deterministic local preflight contract", errors)
-        require(text, "Before the next public release", errors)
+        require(text, f"Remaining `{version}` public closure", errors)
         require(text, "python3 scripts/release-readiness.py --phase public --check-public --run-public-audit", errors)
         require(text, "release-readiness --run-public-audit", errors)
         require(text, 'VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates"', errors)

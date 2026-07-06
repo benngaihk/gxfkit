@@ -71,6 +71,25 @@ def run(cmd: list[str], *, check: bool = False) -> subprocess.CompletedProcess[s
     )
 
 
+def github_auth_header(url: str) -> list[str]:
+    if not url.startswith("https://api.github.com/"):
+        return []
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if token is None and shutil.which("gh"):
+        proc = subprocess.run(
+            ["gh", "auth", "token"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if proc.returncode == 0:
+            token = proc.stdout.strip()
+    if not token:
+        return []
+    return ["-H", f"Authorization: Bearer {token}"]
+
+
 def git(*args: str) -> str | None:
     proc = run(["git", *args])
     if proc.returncode != 0:
@@ -89,6 +108,7 @@ def fetch_json(url: str) -> dict[str, Any]:
                 "Accept: application/json",
                 "-H",
                 "User-Agent: gxfkit-release-readiness",
+                *github_auth_header(url),
                 url,
             ]
         )
