@@ -17,7 +17,7 @@ alone.
   RELEASE_TAG=v0.0.2 BENCH_FILES="human_chr1 human_chr21 yeast" bash scripts/verify-github-release-parity.sh
   ```
 
-## Current public Bioconda: `0.0.1`
+## Current public Bioconda metadata: `0.0.2`
 
 - Bioconda `gxfkit 0.0.1` exists and passed the basic version/conversion smoke
   used before the strict no-overwrite audit. This was re-verified from a clean
@@ -29,8 +29,16 @@ alone.
   ```bash
   VERSION=0.0.1 VERIFY_BIOCONDA_NO_OVERWRITE=0 bash scripts/verify-bioconda-install.sh
   ```
-- Bioconda `gxfkit 0.0.2` is not public yet. The upstream update PR is open:
-  [bioconda-recipes#66930](https://github.com/bioconda/bioconda-recipes/pull/66930).
+- Anaconda package metadata lists Bioconda `gxfkit 0.0.2` files for `linux-64`
+  and `osx-64` in the `main` label. The upstream update PR
+  [bioconda-recipes#66930](https://github.com/bioconda/bioconda-recipes/pull/66930)
+  still shows `REVIEW_REQUIRED` at the time this status was recorded.
+- Clean Bioconda install verification for `0.0.2` is still pending conda
+  repodata propagation. Keep verifying with:
+
+  ```bash
+  VERSION=0.0.2 bash scripts/verify-bioconda-install.sh
+  ```
 
 ## Current public Crates.io: none
 
@@ -79,8 +87,8 @@ the workspace version is bumped or the existing tag is checked out.
 Public `v0.0.1` GitHub Release and Bioconda packages predate the no-overwrite
 `-o/--output` guard and still overwrite existing output files. GitHub Release
 `v0.0.2` has the guard and has passed the strict GitHub release parity checks.
-Bioconda and Crates.io are not strict production evidence until `0.0.2` is live
-there too.
+Bioconda and Crates.io are not strict production evidence until `0.0.2` installs
+cleanly there too.
 
 Full public closure for `0.0.2` still requires:
 
@@ -99,8 +107,8 @@ captured audit log is also verified.
 
 ## Remaining `0.0.2` public closure
 
-1. Wait for [bioconda-recipes#66930](https://github.com/bioconda/bioconda-recipes/pull/66930)
-   to merge and for the `0.0.2` package upload to propagate.
+1. Wait for Bioconda `0.0.2` conda repodata propagation and verify a clean
+   install with `VERSION=0.0.2 bash scripts/verify-bioconda-install.sh`.
 2. Publish Crates.io `gxfkit-core 0.0.2` and `gxfkit 0.0.2` from the existing
    `v0.0.2` tag after a maintainer provides credentials or configures the
    `CARGO_REGISTRY_TOKEN` repository secret.

@@ -44,16 +44,19 @@ TOML
   cat >"$dir/docs/releases/v1.2.3.md" <<'MD'
 # gxfkit v1.2.3 Release Notes
 
-Status: release-candidate notes. Public readiness is tracked by
-scripts/release-evidence.sh --check-public and the strict public install audit.
+Status: public GitHub Release. Bioconda package files are listed but clean
+install verification is still pending conda repodata propagation; Crates.io
+publication is still pending maintainer credentials. Full public readiness is
+tracked by scripts/release-evidence.sh --check-public and the strict public
+install audit.
 
 AGAT 1.7.0 remains the oracle. This release has 100.00% normalized parity on
 human_chr1, human_chr21, and yeast. It includes the no-overwrite behavior.
 It also keeps a deterministic local `release-check.sh` contract guard.
 
+## Install Now
+
 ```bash
-conda install -c conda-forge -c bioconda gxfkit=1.2.3
-cargo install gxfkit --version 1.2.3
 set +e
 RELEASE_CHECK_VERSION_SCOPE=cargo bash scripts/release-check.sh > release-check.log 2>&1
 rc=$?
@@ -71,6 +74,21 @@ VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100 \
 BENCH_FILES="human_chr1 human_chr21 yeast" \
 VERSION=1.2.3 RELEASE_TAG=v1.2.3 bash scripts/verify-public-installs.sh
 scripts/release-evidence.sh --check-public > release-evidence.md
+```
+
+## Pending Install Channels
+
+Bioconda `1.2.3` package files are listed by Anaconda, but clean install
+verification is still pending conda repodata propagation.
+
+```bash
+conda install -c conda-forge -c bioconda gxfkit=1.2.3
+```
+
+Crates.io `1.2.3` is pending maintainer credentials.
+
+```bash
+cargo install gxfkit --version 1.2.3
 ```
 
 - `VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates"`

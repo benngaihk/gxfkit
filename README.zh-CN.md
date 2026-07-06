@@ -85,8 +85,8 @@ cargo build --release
 conda install -c conda-forge -c bioconda gxfkit
 ```
 
-当前公开的 Bioconda 包是 `0.0.1`，可用于基础安装验证，但早于“拒绝覆盖输出文件”保护；
-判断某个 Bioconda 包能否作为严格生产证据前，请以发布状态文档为准。
+Bioconda 包元数据已经列出 `0.0.2`，但干净 solver 安装验证仍在等待 conda repodata
+传播；判断某个 Bioconda 包能否作为严格生产证据前，请以发布状态文档为准。
 
 ### 计划中的分发方式
 

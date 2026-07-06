@@ -67,7 +67,7 @@ write_good_doc() {
   RELEASE_TAG=v0.0.2 BENCH_FILES="human_chr1 human_chr21 yeast" bash scripts/verify-github-release-parity.sh
   ```
 
-## Current public Bioconda: `0.0.1`
+## Current public Bioconda metadata: `0.0.2`
 
 - Bioconda `gxfkit 0.0.1` exists and passed the basic version/conversion smoke
   used before the strict no-overwrite audit. This was re-verified from a clean
@@ -79,8 +79,16 @@ write_good_doc() {
   ```bash
   VERSION=0.0.1 VERIFY_BIOCONDA_NO_OVERWRITE=0 bash scripts/verify-bioconda-install.sh
   ```
-- Bioconda `gxfkit 0.0.2` is not public yet. The upstream update PR is open:
-  [bioconda-recipes#66930](https://github.com/bioconda/bioconda-recipes/pull/66930).
+- Anaconda package metadata lists Bioconda `gxfkit 0.0.2` files for `linux-64`
+  and `osx-64` in the `main` label. The upstream update PR
+  [bioconda-recipes#66930](https://github.com/bioconda/bioconda-recipes/pull/66930)
+  still shows `REVIEW_REQUIRED` at the time this status was recorded.
+- Clean Bioconda install verification for `0.0.2` is still pending conda
+  repodata propagation. Keep verifying with:
+
+  ```bash
+  VERSION=0.0.2 bash scripts/verify-bioconda-install.sh
+  ```
 
 ## Current public Crates.io: none
 
@@ -222,13 +230,13 @@ expect_fail \
 repo="$tmp/bad-bioconda-version"
 make_repo "$repo" 0.0.2
 write_good_doc "$repo"
-perl -0pi -e 's/## Current public Bioconda: `0\.0\.1`/## Current public Bioconda: `0.0.2`/' \
+perl -0pi -e 's/## Current public Bioconda metadata: `0\.0\.2`/## Current public Bioconda metadata: `0.0.1`/' \
   "$repo/docs/RELEASE-STATUS.md"
 git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
 git -C "$repo" commit -q -m initial
 expect_fail \
   bad-bioconda-version \
-  "Current public Bioconda should not be the workspace version until 0.0.2 is public" \
+  "Current public Bioconda metadata 0.0.1 != workspace version 0.0.2" \
   env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
 
 repo="$tmp/occupied-version"
@@ -238,7 +246,7 @@ cat >"$repo/docs/RELEASE-STATUS.md" <<'MD'
 
 ## Current public GitHub Release: `0.0.1`
 
-## Current public Bioconda: `0.0.0`
+## Current public Bioconda metadata: `0.0.0`
 
 ## Current Cargo release candidate: `0.0.1`
 MD

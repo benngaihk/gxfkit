@@ -801,7 +801,7 @@ grep -F "PASS    GitHub release checksums: 4 checksum asset(s) point at matching
   "$tmp/public-channels-complete.out" >/dev/null
 grep -F "PASS    GitHub release tag commit: v1.2.3 resolves to eeeeeeeeeeee" \
   "$tmp/public-channels-complete.out" >/dev/null
-grep -F "PASS    Bioconda public: gxfkit 1.2.3 is available" "$tmp/public-channels-complete.out" >/dev/null
+grep -F "PASS    Bioconda package metadata: gxfkit 1.2.3 files are listed" "$tmp/public-channels-complete.out" >/dev/null
 grep -F "PASS    Bioconda package files: main linux-64 and osx-64 build 0 packages are present with sha256 and non-zero size" \
   "$tmp/public-channels-complete.out" >/dev/null
 grep -F "PASS    Crates.io gxfkit-core: 1.2.3 is available with checksum and non-zero crate size" "$tmp/public-channels-complete.out" >/dev/null
@@ -851,7 +851,7 @@ fixture="$tmp/public-channels-invalid-bioconda-versions"
 make_fixture "$fixture" 1.2.3
 expect_fail \
   public-channels-invalid-bioconda-versions \
-  "FAIL    Bioconda public: invalid metadata: versions={}" \
+  "FAIL    Bioconda package metadata: invalid metadata: versions={}" \
   env GXFKIT_ROOT="$fixture" GXFKIT_FAKE_BIOCONDA=invalid-versions PATH="$fake_api_bin:$PATH" \
     "$PY" "$ROOT/scripts/release-readiness.py" --phase public --check-public
 
@@ -867,7 +867,7 @@ fixture="$tmp/public-channels-bioconda-forbidden"
 make_fixture "$fixture" 1.2.3
 expect_fail \
   public-channels-bioconda-forbidden \
-  "PENDING Bioconda public: gxfkit not available or access limited" \
+  "PENDING Bioconda package metadata: gxfkit not available or access limited" \
   env GXFKIT_ROOT="$fixture" GXFKIT_FAKE_BIOCONDA=forbidden PATH="$fake_api_bin:$PATH" \
     "$PY" "$ROOT/scripts/release-readiness.py" --phase public --check-public
 

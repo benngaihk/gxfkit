@@ -576,11 +576,11 @@ def check_bioconda_public(data: dict[str, Any], version: str) -> list[Result]:
     checks: list[Result] = []
     versions = data.get("versions")
     if not isinstance(versions, list):
-        return [result("FAIL", "Bioconda public", f"invalid metadata: versions={versions!r}")]
+        return [result("FAIL", "Bioconda package metadata", f"invalid metadata: versions={versions!r}")]
     if version not in versions:
-        return [result("PENDING", "Bioconda public", f"available versions: {versions}")]
+        return [result("PENDING", "Bioconda package metadata", f"available versions: {versions}")]
 
-    checks.append(result("PASS", "Bioconda public", f"gxfkit {version} is available"))
+    checks.append(result("PASS", "Bioconda package metadata", f"gxfkit {version} files are listed"))
     files = data.get("files")
     if not isinstance(files, list):
         checks.append(result("FAIL", "Bioconda package files", f"invalid metadata: files={files!r}"))
@@ -776,9 +776,9 @@ def check_public_channels(version: str, tag: str) -> list[Result]:
     except Exception as exc:  # noqa: BLE001
         detail = pending_public_resource_detail("gxfkit", exc)
         if detail is not None:
-            checks.append(result("PENDING", "Bioconda public", detail))
+            checks.append(result("PENDING", "Bioconda package metadata", detail))
         else:
-            checks.append(result("FAIL", "Bioconda public", f"check failed: {exc}"))
+            checks.append(result("FAIL", "Bioconda package metadata", f"check failed: {exc}"))
 
     for crate in ("gxfkit-core", "gxfkit"):
         try:

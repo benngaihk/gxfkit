@@ -41,9 +41,11 @@ def main() -> int:
 
     require(readme, "conda install -c conda-forge -c bioconda gxfkit", "README.md", errors)
     require(readme_zh, "conda install -c conda-forge -c bioconda gxfkit", "README.zh-CN.md", errors)
-    require(readme, "The current public Bioconda package is `0.0.1`", "README.md", errors)
+    require(readme, "Bioconda package metadata now lists `0.0.2`", "README.md", errors)
+    require(readme, "clean solver install verification is still pending conda repodata propagation", "README.md", errors)
     require(readme, "strict-audit production evidence", "README.md", errors)
-    require(readme_zh, "当前公开的 Bioconda 包是 `0.0.1`", "README.zh-CN.md", errors)
+    require(readme_zh, "Bioconda 包元数据已经列出 `0.0.2`", "README.zh-CN.md", errors)
+    require(readme_zh, "干净 solver 安装验证仍在等待 conda repodata 传播", "README.zh-CN.md", errors)
     require(readme_zh, "严格生产证据", "README.zh-CN.md", errors)
 
     if crates_unpublished(status):

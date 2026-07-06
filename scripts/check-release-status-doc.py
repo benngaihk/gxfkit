@@ -61,7 +61,7 @@ def main() -> int:
     tag = f"v{version}"
     text = DOC.read_text(encoding="utf-8")
     github_version = status_version(text, "Current public GitHub Release")
-    bioconda_public_version = status_version(text, "Current public Bioconda")
+    bioconda_metadata_version = status_version(text, "Current public Bioconda metadata")
     cargo_candidate_version = status_version(text, "Current Cargo release candidate")
     errors: list[str] = []
 
@@ -91,10 +91,15 @@ def main() -> int:
     require(text, "public Bioconda package state", errors)
     require(
         text,
-        f"VERSION={bioconda_public_version} VERIFY_BIOCONDA_NO_OVERWRITE=0 bash scripts/verify-bioconda-install.sh",
+        "VERSION=0.0.1 VERIFY_BIOCONDA_NO_OVERWRITE=0 bash scripts/verify-bioconda-install.sh",
         errors,
     )
-    require(text, f"Bioconda `gxfkit {version}` is not public yet", errors)
+    require(text, f"Anaconda package metadata lists Bioconda `gxfkit {version}` files", errors)
+    require(text, "linux-64", errors)
+    require(text, "osx-64", errors)
+    require(text, "REVIEW_REQUIRED", errors)
+    require(text, f"Clean Bioconda install verification for `{version}` is still pending conda repodata propagation", errors)
+    require(text, f"VERSION={version} bash scripts/verify-bioconda-install.sh", errors)
     require(text, "bioconda-recipes#66930", errors)
     require(text, f"Crates.io `gxfkit-core {version}` is not published", errors)
     require(text, f"Crates.io `gxfkit {version}` is not published", errors)
@@ -108,8 +113,8 @@ def main() -> int:
         errors.append(f"Current public GitHub Release {github_version} != workspace version {version}")
     if cargo_candidate_version != version:
         errors.append(f"Current Cargo release candidate {cargo_candidate_version} != workspace version {version}")
-    if bioconda_public_version == version:
-        errors.append("Current public Bioconda should not be the workspace version until 0.0.2 is public")
+    if bioconda_metadata_version != version:
+        errors.append(f"Current public Bioconda metadata {bioconda_metadata_version} != workspace version {version}")
 
     stale_workspace_claim = re.search(
         r"current working tree still reports workspace version `([^`]+)`",
@@ -130,19 +135,18 @@ def main() -> int:
         require(text, f"Crates.io `gxfkit {version}` is not published", errors)
         require(text, f"The existing `{tag}` tag points at the release-candidate commit. It must not be moved.", errors)
         require(text, "the next public release must bump the workspace version", errors)
-    if version != bioconda_public_version:
-        require(text, f"Current public Bioconda: `{bioconda_public_version}`", errors)
-        require(text, f"Current Cargo release candidate: `{version}`", errors)
-        require(text, "offline install/package smoke checks", errors)
-        require(text, "python3 scripts/check-release-check.py", errors)
-        require(text, "deterministic local preflight contract", errors)
-        require(text, f"Remaining `{version}` public closure", errors)
-        require(text, "python3 scripts/release-readiness.py --phase public --check-public --run-public-audit", errors)
-        require(text, "release-readiness --run-public-audit", errors)
-        require(text, 'VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates"', errors)
-        require(text, "VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=0", errors)
-        require(text, "VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1", errors)
-        require(text, "VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100", errors)
+    require(text, f"Current public Bioconda metadata: `{version}`", errors)
+    require(text, f"Current Cargo release candidate: `{version}`", errors)
+    require(text, "offline install/package smoke checks", errors)
+    require(text, "python3 scripts/check-release-check.py", errors)
+    require(text, "deterministic local preflight contract", errors)
+    require(text, f"Remaining `{version}` public closure", errors)
+    require(text, "python3 scripts/release-readiness.py --phase public --check-public --run-public-audit", errors)
+    require(text, "release-readiness --run-public-audit", errors)
+    require(text, 'VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates"', errors)
+    require(text, "VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=0", errors)
+    require(text, "VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1", errors)
+    require(text, "VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100", errors)
 
     if errors:
         for error in errors:
