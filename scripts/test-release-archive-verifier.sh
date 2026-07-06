@@ -84,7 +84,7 @@ VERIFY_RELEASE_ARCHIVE_SMOKE=0 VERIFY_RELEASE_ARCHIVE_EXPECTED_VERSION=0.0.0-tes
 
 fallback_bin="$tmp/fallback-bin"
 mkdir -p "$fallback_bin"
-for tool in bash sh tar wc tr grep mktemp rm find basename dirname pwd python3; do
+for tool in bash sh tar gzip wc tr grep mktemp rm find basename dirname pwd python3; do
   tool_path="$(command -v "$tool")"
   ln -s "$tool_path" "$fallback_bin/$tool"
 done
