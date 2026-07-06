@@ -37,8 +37,18 @@ The local release preflight uses offline install/package smoke checks after the
 normal build warms the Cargo cache, and `python3 scripts/check-release-check.py`
 guards that deterministic local preflight contract.
 
-Bioconda metadata intentionally remains on `0.0.1` until the new `v0.0.2` tag
-exists and its GitHub source archive sha256 is known.
+The `v0.0.2` tag exists and points at the release-candidate commit. The Release
+workflow built the four platform archives and created a draft GitHub Release.
+Bioconda metadata is updated to `0.0.2` with the GitHub source archive sha256:
+
+```text
+b60a0c96f4d70abea6a0a77f26e2fe8092aa4ab913936bb502f2561689c27020
+```
+
+Crates.io `gxfkit 0.0.2` is not published. Do not publish Crates.io `0.0.2`
+from `main` after the Bioconda metadata commit, because the existing `v0.0.2`
+tag points at an older commit. Publishing must use the existing `v0.0.2` tag, or
+the next public release must bump the workspace version before publishing.
 
 ## Important `0.0.1` boundary
 
@@ -66,14 +76,13 @@ VERSION=X.Y.Z RELEASE_TAG=vX.Y.Z bash scripts/verify-public-installs.sh
 
 ## Before the next public release
 
-1. Cut a new GitHub Release tag from the Cargo release-candidate commit.
-2. Update the Bioconda recipe to the new tag and checksum.
+1. Publish the draft GitHub Release after archive verification.
+2. Open or update the upstream Bioconda recipe with the `0.0.2` tag and checksum.
 3. Publish Crates.io from the matching tag or from a version whose tag does not
    exist yet.
 4. Run the strict public install audit, including no-overwrite and core-corpus
    GitHub Release parity at 100%, through `release-readiness --run-public-audit`
    so the captured audit log is also verified.
 
-After the new tag exists, rerun `scripts/prepare-next-version.py` with
-`--bioconda-sha256`; it updates Bioconda metadata and refuses to run without the
-checksum.
+If another release candidate is needed after the existing `v0.0.2` tag, bump the
+workspace version rather than moving the public tag.
