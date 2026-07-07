@@ -76,6 +76,15 @@ VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1 \
 VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100 \
 BENCH_FILES="human_chr1 human_chr21 yeast" \
 VERSION=1.2.3 RELEASE_TAG=v1.2.3 bash scripts/verify-public-installs.sh
+A staged public install audit allowing only the missing Crates.io channel passed
+on 2026-07-07 with:
+VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates" \
+VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=1 \
+VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1 \
+VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100 \
+BENCH_FILES="human_chr1 human_chr21 yeast" \
+VERSION=1.2.3 RELEASE_TAG=v1.2.3 bash scripts/verify-public-installs.sh
+public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]
 scripts/release-evidence.sh --check-public > release-evidence.md
 ```
 
@@ -123,11 +132,11 @@ expect_fail \
 
 fixture="$tmp/missing-audit"
 make_fixture "$fixture"
-perl -0pi -e 's/VERSION=1\.2\.3 RELEASE_TAG=v1\.2\.3 bash scripts\/verify-public-installs\.sh//' \
+perl -0pi -e 's/VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=0 \\\n//' \
   "$fixture/docs/releases/v1.2.3.md"
 expect_fail \
   missing-audit \
-  "release notes must mention: VERSION=1.2.3 RELEASE_TAG=v1.2.3 bash scripts/verify-public-installs.sh" \
+  "release notes must mention: VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=0" \
   env GXFKIT_ROOT="$fixture" "$PY" "$ROOT/scripts/check-release-notes.py"
 
 fixture="$tmp/version-mismatch"

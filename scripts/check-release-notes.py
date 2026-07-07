@@ -82,6 +82,23 @@ def main(argv: list[str]) -> int:
     require(text, f"VERSION={version} RELEASE_TAG={tag} bash scripts/verify-public-installs.sh", errors)
     require(text, 'VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates"', errors)
     require(text, "VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=0", errors)
+    require(
+        text,
+        'VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=0 \\ '
+        'VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1 \\ '
+        'VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100 \\ '
+        'BENCH_FILES="human_chr1 human_chr21 yeast" \\ '
+        f"VERSION={version} RELEASE_TAG={tag} bash scripts/verify-public-installs.sh",
+        errors,
+    )
+    require(text, "A staged public install audit allowing only the missing Crates.io channel passed", errors)
+    require(text, "on 2026-07-07", errors)
+    require(text, "VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=1", errors)
+    require(
+        text,
+        "public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]",
+        errors,
+    )
     require(text, "scripts/release-evidence.sh --check-public > release-evidence.md", errors)
     require(text, "VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1", errors)
     require(text, "VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100", errors)
