@@ -7,6 +7,9 @@ to every post; the trust contract matters more than the headline.
 Public beta feedback thread:
 <https://github.com/benngaihk/gxfkit/issues/7>
 
+Outreach execution playbook:
+[OUTREACH-M3-BETA.md](OUTREACH-M3-BETA.md)
+
 ## Positioning
 
 `gxfkit` is a fast Rust implementation of selected AGAT-compatible GFF/GTF
@@ -118,6 +121,9 @@ the compatibility ledger into real-world coverage.
 - Bioconda/GitHub Release notes for installability updates.
 - Later: Snakemake wrapper, Nextflow module, nf-core issue, Galaxy tool listing,
   JOSS or Bioinformatics Application Note.
+
+For channel-specific drafts and tracking, see
+[OUTREACH-M3-BETA.md](OUTREACH-M3-BETA.md).
 
 ## Caveats to preserve
 

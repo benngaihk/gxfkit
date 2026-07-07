@@ -32,7 +32,11 @@ parity. If not, stop.
       better than AGAT; gff2gtf needs the full graph, so this means borrowing
       from a single buffer, not true streaming)
 - [x] README benchmark table
-- [ ] Demo/screencast + soft announcement (rust-bio / bioinformatics circles)
+- [x] Soft announcement kit + pinned beta feedback thread
+      ([SOFT-LAUNCH-M3-BETA.md](SOFT-LAUNCH-M3-BETA.md),
+      [OUTREACH-M3-BETA.md](OUTREACH-M3-BETA.md),
+      [#7](https://github.com/benngaihk/gxfkit/issues/7))
+- [ ] Demo/screencast
 
 ## M2 — Distribution beta: make `gxfkit` easy to install  ✅ complete
 The next practical bottleneck is not conversion correctness, but adoption:
