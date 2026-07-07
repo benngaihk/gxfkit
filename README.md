@@ -40,7 +40,9 @@ and gxfkit treats its output as the gold standard.
   reproducible evidence rather than broad compatibility claims.
 
 Maintainer launch copy lives in
-[docs/SOFT-LAUNCH-M3-BETA.md](docs/SOFT-LAUNCH-M3-BETA.md).
+[docs/SOFT-LAUNCH-M3-BETA.md](docs/SOFT-LAUNCH-M3-BETA.md). Public beta
+feedback is collected in
+[#7](https://github.com/benngaihk/gxfkit/issues/7).
 
 ---
 

@@ -34,7 +34,8 @@ AGAT 仍然是本项目的正确性基准。`gxfkit` 的每个输出差异都应
   文件做兼容性反馈。
 
 对外推广文案和节奏见
-[docs/SOFT-LAUNCH-M3-BETA.md](docs/SOFT-LAUNCH-M3-BETA.md)。
+[docs/SOFT-LAUNCH-M3-BETA.md](docs/SOFT-LAUNCH-M3-BETA.md)。公开 beta
+反馈入口是 [#7](https://github.com/benngaihk/gxfkit/issues/7)。
 
 ---
 

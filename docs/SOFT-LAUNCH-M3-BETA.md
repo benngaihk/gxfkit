@@ -4,6 +4,9 @@ Use this as source copy for GitHub Discussions, rust-bio, bioinformatics Slack,
 workflow-tool forums, and direct maintainer outreach. Keep the caveats attached
 to every post; the trust contract matters more than the headline.
 
+Public beta feedback thread:
+<https://github.com/benngaihk/gxfkit/issues/7>
+
 ## Positioning
 
 `gxfkit` is a fast Rust implementation of selected AGAT-compatible GFF/GTF
@@ -52,6 +55,7 @@ Evidence:
 - Parity ledger: <https://github.com/benngaihk/gxfkit/blob/main/docs/PARITY.md>
 - `gxf2gxf` beta ledger: <https://github.com/benngaihk/gxfkit/blob/main/docs/GXF2GXF-PARITY.md>
 - Roadmap: <https://github.com/benngaihk/gxfkit/blob/main/docs/ROADMAP.md>
+- Feedback thread: <https://github.com/benngaihk/gxfkit/issues/7>
 
 ## One-line post
 
