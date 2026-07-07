@@ -38,10 +38,11 @@ grep -F "bash scripts/release-check.sh" "$workflow" >/dev/null
 grep -F "cargo publish -p gxfkit-core --locked --registry crates-io" "$workflow" >/dev/null
 grep -F "inputs.crate == 'both' || inputs.crate == 'gxfkit-core' || inputs.crate == 'gxfkit'" \
   "$workflow" >/dev/null
-grep -F "cargo search gxfkit-core --registry crates-io --limit 5" "$workflow" >/dev/null
+grep -F 'bash "$GXFKIT_RELEASE_TOOLS/scripts/wait-crates-version-visible.sh"' "$workflow" >/dev/null
 grep -F "cargo package -p gxfkit --locked --registry crates-io" "$workflow" >/dev/null
 grep -F "cargo publish -p gxfkit --locked --registry crates-io" "$workflow" >/dev/null
-grep -F "cargo search gxfkit --registry crates-io --limit 5" "$workflow" >/dev/null
+grep -F "gxfkit-core" "$workflow" >/dev/null
+grep -F "gxfkit" "$workflow" >/dev/null
 grep -F 'bash "$GXFKIT_RELEASE_TOOLS/scripts/verify-crates-install.sh"' "$workflow" >/dev/null
 
 python3 - <<'PY'
@@ -97,6 +98,7 @@ helpers = next(run for run in runs if "GXFKIT_RELEASE_TOOLS" in run)
 assert 'git fetch --no-tags --depth=1 origin "$GITHUB_SHA"' in helpers
 assert "check-crates-publish-state.sh" in helpers
 assert "verify-crates-install.sh" in helpers
+assert "wait-crates-version-visible.sh" in helpers
 assert 'git show "$GITHUB_SHA:scripts/$helper"' in helpers
 preflight = next(run for run in runs if "bash scripts/release-check.sh" in run)
 state_check = next(
@@ -137,16 +139,22 @@ assert step_by_name["Publish gxfkit-core"]["run"] == (
 assert step_by_name["Publish gxfkit"]["run"] == (
     "cargo publish -p gxfkit --locked --registry crates-io"
 )
-assert "cargo search gxfkit-core" in step_by_name[
+assert "wait-crates-version-visible.sh" in step_by_name[
     "Wait for gxfkit-core registry visibility"
 ]["run"]
 assert "EXPECTED_VERSION" in step_by_name[
     "Wait for gxfkit-core registry visibility"
 ]["run"]
+assert "gxfkit-core" in step_by_name[
+    "Wait for gxfkit-core registry visibility"
+]["run"]
 assert step_by_name["Wait for gxfkit-core registry visibility"]["if"] == (
     "${{ inputs.crate == 'both' || inputs.crate == 'gxfkit-core' || inputs.crate == 'gxfkit' }}"
 )
-assert "cargo search gxfkit " in step_by_name[
+assert "wait-crates-version-visible.sh" in step_by_name[
+    "Wait for gxfkit registry visibility"
+]["run"]
+assert "gxfkit" in step_by_name[
     "Wait for gxfkit registry visibility"
 ]["run"]
 assert "verify-crates-install.sh" in step_by_name["Verify Crates.io install"]["run"]

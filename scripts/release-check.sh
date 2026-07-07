@@ -97,6 +97,7 @@ python3 scripts/check-workflow-policy.py
 echo ">> publish ref verifier"
 bash scripts/test-publish-ref.sh
 bash scripts/test-check-crates-publish-state.sh
+bash scripts/test-wait-crates-version-visible.sh
 bash scripts/test-trigger-crates-publish.sh
 
 echo ">> benchmark summarizer"

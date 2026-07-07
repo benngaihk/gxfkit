@@ -92,7 +92,8 @@ jobs:
           git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
           for helper in \
             check-crates-publish-state.sh \
-            verify-crates-install.sh
+            verify-crates-install.sh \
+            wait-crates-version-visible.sh
           do
             git show "$GITHUB_SHA:scripts/$helper" >"$helper_root/scripts/$helper"
             chmod +x "$helper_root/scripts/$helper"
@@ -160,16 +161,9 @@ jobs:
         if: ${{ inputs.crate == 'both' || inputs.crate == 'gxfkit-core' || inputs.crate == 'gxfkit' }}
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 30); do
-            if cargo search gxfkit-core --registry crates-io --limit 5 \
-              | grep -Eq "^gxfkit-core = \"${EXPECTED_VERSION}\""; then
-              exit 0
-            fi
-            echo "gxfkit-core ${EXPECTED_VERSION} is not visible yet (attempt ${attempt}/30)."
-            sleep 20
-          done
-          echo "Timed out waiting for gxfkit-core ${EXPECTED_VERSION} in crates.io index."
-          exit 1
+          bash "$GXFKIT_RELEASE_TOOLS/scripts/wait-crates-version-visible.sh" \
+            "${EXPECTED_VERSION}" \
+            gxfkit-core
 
       - name: Package gxfkit
         if: ${{ inputs.crate == 'both' || inputs.crate == 'gxfkit' }}
@@ -185,16 +179,9 @@ jobs:
         if: ${{ inputs.crate == 'both' || inputs.crate == 'gxfkit' }}
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 30); do
-            if cargo search gxfkit --registry crates-io --limit 5 \
-              | grep -Eq "^gxfkit = \"${EXPECTED_VERSION}\""; then
-              exit 0
-            fi
-            echo "gxfkit ${EXPECTED_VERSION} is not visible yet (attempt ${attempt}/30)."
-            sleep 20
-          done
-          echo "Timed out waiting for gxfkit ${EXPECTED_VERSION} in crates.io index."
-          exit 1
+          bash "$GXFKIT_RELEASE_TOOLS/scripts/wait-crates-version-visible.sh" \
+            "${EXPECTED_VERSION}" \
+            gxfkit
 
       - name: Verify Crates.io install
         if: ${{ inputs.crate == 'both' || inputs.crate == 'gxfkit' }}
