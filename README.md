@@ -39,13 +39,6 @@ and gxfkit treats its output as the gold standard.
   [docs/GXF2GXF-PARITY.md](docs/GXF2GXF-PARITY.md), so adoption can be based on
   reproducible evidence rather than broad compatibility claims.
 
-Maintainer launch copy lives in
-[docs/SOFT-LAUNCH-M3-BETA.md](docs/SOFT-LAUNCH-M3-BETA.md). Public beta
-feedback is collected in
-[#7](https://github.com/benngaihk/gxfkit/issues/7).
-
----
-
 ## Benchmark
 
 Numbers are produced by `benchmark/run.sh` — both tools run in the **same Linux

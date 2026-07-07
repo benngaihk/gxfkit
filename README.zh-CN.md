@@ -30,12 +30,8 @@ AGAT 仍然是本项目的正确性基准。`gxfkit` 的每个输出差异都应
 - **更容易塞进流程：** CLI 参数尽量贴近 AGAT 的常用脚本。
 - **更重视可验证：** benchmark 和 parity harness 都在仓库里，可以一键复现。
 - **不夸大兼容性：** 支持范围、已知差异和路线图公开记录。
-- **可以试用下一步：** `main` 上已有 `gxf2gxf` 标准化 beta，适合拿真实 GFF3
-  文件做兼容性反馈。
-
-对外推广文案和节奏见
-[docs/SOFT-LAUNCH-M3-BETA.md](docs/SOFT-LAUNCH-M3-BETA.md)。公开 beta
-反馈入口是 [#7](https://github.com/benngaihk/gxfkit/issues/7)。
+- **可以试用下一步：** `main` 上已有 `gxf2gxf` 标准化 beta，适合用真实 GFF3
+  文件做兼容性验证。
 
 ---
 
