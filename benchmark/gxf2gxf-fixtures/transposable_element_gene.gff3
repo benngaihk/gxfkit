@@ -1,0 +1,7 @@
+##gff-version 3
+chr1	FlyBase	transposable_element_gene	10	20	.	+	.	ID=gene:B;Name=B;biotype=transposable_element;gene_id=B
+chr1	FlyBase	transposable_element	10	20	.	+	.	ID=transcript:B-RA;Parent=gene:B;biotype=transposable_element;tag=Ensembl_canonical;transcript_id=B-RA
+chr1	FlyBase	exon	10	20	.	+	.	Parent=transcript:B-RA;Name=B-RA-E1;exon_id=B-RA-E1;rank=1
+chr1	FlyBase	transposable_element_gene	30	40	.	+	.	ID=gene:A;Name=A;biotype=transposable_element;gene_id=A
+chr1	FlyBase	transposable_element	30	40	.	+	.	ID=transcript:A-RA;Parent=gene:A;biotype=transposable_element;tag=Ensembl_canonical;transcript_id=A-RA
+chr1	FlyBase	exon	30	40	.	+	.	Parent=transcript:A-RA;Name=A-RA-E1;exon_id=A-RA-E1;rank=1

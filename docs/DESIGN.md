@@ -65,8 +65,9 @@ AGAT-observed hierarchy completion slice: a gene/pseudogene with direct
 CDS/exon/UTR/codon children gets a renamed `agat-<type>-N` parent, a synthetic
 `AGAT mRNA` or `AGAT RNA` carrying the original gene ID, AGAT-compatible
 synthetic exon rows where observed, contiguous same-ID direct CDS fragment
-merging, and rewritten child `Parent` links. This is not the full AGAT parser
-yet; broader standardization remains tracked in
+merging, FlyBase-style transposable-element locus remodeling, and rewritten
+child `Parent` links. This is not the full AGAT parser yet; broader
+standardization remains tracked in
 [M3-STANDARDIZATION-PLAN.md](M3-STANDARDIZATION-PLAN.md).
 
 ## Performance posture

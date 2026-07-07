@@ -82,6 +82,13 @@ struct SyntheticTranscriptPlan {
     template_child: usize,
 }
 
+#[derive(Clone)]
+struct TransposableElementPlan {
+    gene_id: String,
+    rna_id: String,
+    template_child: usize,
+}
+
 struct Layout {
     children: Vec<Vec<usize>>,
     roots: Vec<usize>,
@@ -90,6 +97,7 @@ struct Layout {
     gene_id_override: Vec<Option<String>>,
     parent_override: Vec<Option<String>>,
     synthetic_tx: Vec<Option<SyntheticTranscriptPlan>>,
+    te_plan: Vec<Option<TransposableElementPlan>>,
     synthetic_exon_id: Vec<Option<String>>,
 }
 
@@ -113,10 +121,62 @@ fn compute_layout(records: &[Record]) -> Layout {
     let mut gene_id_override = vec![None; n];
     let mut parent_override = vec![None; n];
     let mut synthetic_tx = vec![None; n];
+    let mut te_plan = vec![None; n];
     let mut synthetic_exon_id = vec![None; n];
     let mut synthetic_exon_needed = vec![false; n];
     let mut skip_record = vec![false; n];
     let mut coords: Vec<(u64, u64)> = records.iter().map(|r| (r.start, r.end)).collect();
+
+    let mut te_candidates = Vec::new();
+    for parent in 0..n {
+        if !records[parent]
+            .feature_type
+            .eq_ignore_ascii_case("transposable_element_gene")
+        {
+            continue;
+        }
+        for &te in &children[parent] {
+            if !records[te]
+                .feature_type
+                .eq_ignore_ascii_case("transposable_element")
+            {
+                continue;
+            }
+            let Some(&template_child) = children[te]
+                .iter()
+                .find(|&&c| needs_transcript_parent(&records[c].feature_type))
+            else {
+                continue;
+            };
+            te_candidates.push((parent, te, template_child));
+        }
+    }
+    te_candidates.sort_by(|&(a_parent, a_te, _), &(b_parent, b_te, _)| {
+        records[a_parent]
+            .id()
+            .unwrap_or("")
+            .cmp(records[b_parent].id().unwrap_or(""))
+            .then(
+                records[a_te]
+                    .id()
+                    .unwrap_or("")
+                    .cmp(records[b_te].id().unwrap_or("")),
+            )
+            .then(a_te.cmp(&b_te))
+    });
+    for (parent, te, template_child) in te_candidates {
+        let gene_id = next_agat_id(&mut counters, &mut used_ids, "transposable_element");
+        let Some(rna_id) = records[te].id().map(ToString::to_string) else {
+            continue;
+        };
+        gene_id_override[te] = Some(gene_id.clone());
+        te_plan[te] = Some(TransposableElementPlan {
+            gene_id,
+            rna_id,
+            template_child,
+        });
+        skip_record[parent] = true;
+    }
 
     for parent in 0..n {
         if !is_gene_like(&records[parent].feature_type) {
@@ -178,6 +238,7 @@ fn compute_layout(records: &[Record]) -> Layout {
             synthetic_exon_id[child] = Some(next_agat_id(&mut counters, &mut used_ids, "exon"));
         }
     }
+    promote_missing_child_ids(records, &mut used_ids, &mut gene_id_override);
 
     for kids in &mut children {
         kids.sort_by(|&a, &b| {
@@ -228,7 +289,27 @@ fn compute_layout(records: &[Record]) -> Layout {
         gene_id_override,
         parent_override,
         synthetic_tx,
+        te_plan,
         synthetic_exon_id,
+    }
+}
+
+fn promote_missing_child_ids(
+    records: &[Record],
+    used_ids: &mut HashSet<String>,
+    id_override: &mut [Option<String>],
+) {
+    for (i, record) in records.iter().enumerate() {
+        if record.id().is_some() || id_override[i].is_some() {
+            continue;
+        }
+        if record.feature_type.eq_ignore_ascii_case("exon") {
+            if let Some(exon_id) = record.attributes.get("exon_id") {
+                if used_ids.insert(exon_id.to_string()) {
+                    id_override[i] = Some(exon_id.to_string());
+                }
+            }
+        }
     }
 }
 
@@ -365,6 +446,16 @@ fn emit_tree(
             layout,
         )?;
     }
+    if let Some(plan) = &layout.te_plan[i] {
+        write_synthetic_te_rna(
+            out,
+            &records[i],
+            i,
+            &records[plan.template_child],
+            plan,
+            layout,
+        )?;
+    }
 
     for &child in &layout.children[i] {
         if let Some(exon_id) = &layout.synthetic_exon_id[child] {
@@ -386,6 +477,30 @@ fn emit_tree(
         emit_tree(child, records, layout, emitted, out)?;
     }
     Ok(())
+}
+
+fn write_synthetic_te_rna(
+    out: &mut impl Write,
+    parent: &Record,
+    parent_idx: usize,
+    template: &Record,
+    plan: &TransposableElementPlan,
+    layout: &Layout,
+) -> std::io::Result<()> {
+    write!(
+        out,
+        "{}\tAGAT\tRNA\t{}\t{}\t{}\t{}\t.\t",
+        parent.seqid,
+        layout.coords[parent_idx].0,
+        layout.coords[parent_idx].1,
+        if parent.score.is_empty() {
+            "."
+        } else {
+            &parent.score
+        },
+        strand_gff3(parent.strand),
+    )?;
+    write_synthetic_attrs(out, template, &plan.rna_id, &plan.gene_id)
 }
 
 fn planless_parent_fallback(record: &Record) -> &str {
@@ -626,6 +741,31 @@ chr1\tRefSeq\tgene\t10\t40\t.\t+\t.\tID=agat-gene-1;locus_tag=LTA
 chr1\tAGAT\tmRNA\t10\t40\t.\t+\t.\tID=geneAdj;Parent=agat-gene-1;locus_tag=LTA;protein_id=pAdj
 chr1\tAGAT\texon\t10\t40\t.\t+\t.\tID=agat-exon-1;Parent=geneAdj;locus_tag=LTA;protein_id=pAdj
 chr1\tRefSeq\tCDS\t10\t40\t.\t+\t0\tID=cdsAdj;Parent=geneAdj;locus_tag=LTA;protein_id=pAdj
+"
+        );
+    }
+
+    #[test]
+    fn transposable_element_gene_is_remodeled_like_agat() {
+        let gff = "\
+chr1\tFlyBase\ttransposable_element_gene\t10\t20\t.\t+\t.\tID=gene:B;Name=B;biotype=transposable_element;gene_id=B
+chr1\tFlyBase\ttransposable_element\t10\t20\t.\t+\t.\tID=transcript:B-RA;Parent=gene:B;biotype=transposable_element;tag=Ensembl_canonical;transcript_id=B-RA
+chr1\tFlyBase\texon\t10\t20\t.\t+\t.\tParent=transcript:B-RA;Name=B-RA-E1;exon_id=B-RA-E1;rank=1
+chr1\tFlyBase\ttransposable_element_gene\t30\t40\t.\t+\t.\tID=gene:A;Name=A;biotype=transposable_element;gene_id=A
+chr1\tFlyBase\ttransposable_element\t30\t40\t.\t+\t.\tID=transcript:A-RA;Parent=gene:A;biotype=transposable_element;tag=Ensembl_canonical;transcript_id=A-RA
+chr1\tFlyBase\texon\t30\t40\t.\t+\t.\tParent=transcript:A-RA;Name=A-RA-E1;exon_id=A-RA-E1;rank=1
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tFlyBase\ttransposable_element\t10\t20\t.\t+\t.\tID=agat-transposable_element-2;Parent=gene:B;biotype=transposable_element;tag=Ensembl_canonical;transcript_id=B-RA
+chr1\tAGAT\tRNA\t10\t20\t.\t+\t.\tID=transcript:B-RA;Parent=agat-transposable_element-2;Name=B-RA-E1;exon_id=B-RA-E1;rank=1
+chr1\tFlyBase\texon\t10\t20\t.\t+\t.\tID=B-RA-E1;Parent=transcript:B-RA;Name=B-RA-E1;exon_id=B-RA-E1;rank=1
+chr1\tFlyBase\ttransposable_element\t30\t40\t.\t+\t.\tID=agat-transposable_element-1;Parent=gene:A;biotype=transposable_element;tag=Ensembl_canonical;transcript_id=A-RA
+chr1\tAGAT\tRNA\t30\t40\t.\t+\t.\tID=transcript:A-RA;Parent=agat-transposable_element-1;Name=A-RA-E1;exon_id=A-RA-E1;rank=1
+chr1\tFlyBase\texon\t30\t40\t.\t+\t.\tID=A-RA-E1;Parent=transcript:A-RA;Name=A-RA-E1;exon_id=A-RA-E1;rank=1
 "
         );
     }
