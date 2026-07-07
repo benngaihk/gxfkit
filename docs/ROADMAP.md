@@ -34,7 +34,7 @@ parity. If not, stop.
 - [x] README benchmark table
 - [ ] Demo/screencast + soft announcement (rust-bio / bioinformatics circles)
 
-## M2 — Distribution beta: make `gxfkit` easy to install
+## M2 — Distribution beta: make `gxfkit` easy to install  ✅ complete
 The next practical bottleneck is not conversion correctness, but adoption:
 users should be able to install a binary without a Rust toolchain and reproduce
 the benchmark/parity claims from the release artifact.
@@ -64,16 +64,18 @@ the benchmark/parity claims from the release artifact.
       different commit than its `vX.Y.Z` tag
 - [x] Version-prep helper with separate Cargo bump and Bioconda-sha update
       phases, so no placeholder checksum is needed
-- [ ] Publish `gxfkit-core` and `gxfkit` to Crates.io ([#1](https://github.com/benngaihk/gxfkit/issues/1))
+- [x] Publish `gxfkit-core` and `gxfkit` to Crates.io ([#1](https://github.com/benngaihk/gxfkit/issues/1))
 - [x] Add Bioconda recipe and verify install
       (`conda install -c conda-forge -c bioconda gxfkit`; PR
       [bioconda-recipes#66815](https://github.com/bioconda/bioconda-recipes/pull/66815))
 - [x] Expand install docs and FAQ with common pipeline swap-in examples
-- [ ] Cut a post-`v0.0.1` public release whose GitHub/Bioconda/Crates.io
+- [x] Cut a post-`v0.0.1` public release whose GitHub/Bioconda/Crates.io
       packages pass the default strict public install audit
       (no-overwrite plus core-corpus release-binary parity at 100%)
-- [ ] **Gate:** a clean machine can install `gxfkit` from GitHub Releases,
-      Crates.io, or Bioconda and run `gff2gtf`
+- [x] **Gate:** a clean machine can install `gxfkit` from GitHub Releases,
+      Crates.io, or Bioconda and run `gff2gtf` → see
+      [RELEASE-STATUS.md](RELEASE-STATUS.md) and
+      [releases/v0.0.2.md](releases/v0.0.2.md)
 
 ## M3 — Standardization engine + command matrix
 The big remaining feature is AGAT's broader hierarchy **standardization** engine
@@ -81,7 +83,8 @@ The big remaining feature is AGAT's broader hierarchy **standardization** engine
 children with missing or irregular intermediate levels, AGAT synthesizes and
 normalizes the hierarchy. This is what makes AGAT valuable ("it eats any messy
 GFF") and unblocks `gxf2gxf` + most other tools.
-- [ ] `gxf2gxf` standardization (GFF3→standardized GFF3) ([#4](https://github.com/benngaihk/gxfkit/issues/4)); the engine that
+- [ ] `gxf2gxf` standardization (GFF3→standardized GFF3) ([#4](https://github.com/benngaihk/gxfkit/issues/4);
+      entry plan: [M3-STANDARDIZATION-PLAN.md](M3-STANDARDIZATION-PLAN.md)); the engine that
       synthesizes missing parents / completes the gene→transcript→exon hierarchy
 - [ ] Reproduce AGAT's large-corpus synthetic counter ordering (DIV-4) for
       rewritten exon/UTR/TE IDs — structural TE remodeling is implemented and
