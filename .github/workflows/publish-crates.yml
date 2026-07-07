@@ -121,6 +121,11 @@ jobs:
           git fetch --tags --force
           VERSION="${EXPECTED_VERSION}" bash scripts/check-publish-ref.sh
 
+      - name: Verify Crates.io publish state
+        run: |
+          set -euo pipefail
+          bash scripts/check-crates-publish-state.sh "${EXPECTED_VERSION}" "${{ inputs.crate }}"
+
       - name: Run publish preflight
         run: |
           set -euo pipefail
@@ -158,6 +163,7 @@ jobs:
           bash scripts/test-workflow-policy.sh
           python3 scripts/check-workflow-policy.py
           bash scripts/test-publish-ref.sh
+          bash scripts/test-check-crates-publish-state.sh
           bash scripts/test-trigger-crates-publish.sh
           bash scripts/test-benchmark-summarize.sh
           bash scripts/test-benchmark-summary.sh

@@ -26,6 +26,8 @@ grep -F "Verify Crates.io token" "$workflow" >/dev/null
 grep -F 'if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then' "$workflow" >/dev/null
 grep -F "CARGO_REGISTRY_TOKEN repository secret is required to publish to Crates.io." "$workflow" >/dev/null
 grep -F "VERSION=\"\${EXPECTED_VERSION}\" bash scripts/check-publish-ref.sh" "$workflow" >/dev/null
+grep -F "Verify Crates.io publish state" "$workflow" >/dev/null
+grep -F "bash scripts/check-crates-publish-state.sh \"\${EXPECTED_VERSION}\" \"\${{ inputs.crate }}\"" "$workflow" >/dev/null
 grep -F "python3 scripts/check-version-consistency.py" "$workflow" >/dev/null
 grep -F "bash scripts/test-crate-metadata.sh" "$workflow" >/dev/null
 grep -F "python3 scripts/check-crate-metadata.py" "$workflow" >/dev/null
@@ -56,6 +58,7 @@ grep -F -- "--expected-version \"\$EXPECTED_VERSION\"" "$workflow" >/dev/null
 grep -F "bash scripts/test-publish-crates-workflow.sh" "$workflow" >/dev/null
 grep -F "bash scripts/test-workflow-policy.sh" "$workflow" >/dev/null
 grep -F "python3 scripts/check-workflow-policy.py" "$workflow" >/dev/null
+grep -F "bash scripts/test-check-crates-publish-state.sh" "$workflow" >/dev/null
 grep -F "bash scripts/test-trigger-crates-publish.sh" "$workflow" >/dev/null
 grep -F "bash scripts/test-benchmark-summary.sh" "$workflow" >/dev/null
 grep -F "python3 scripts/check-benchmark-summary.py" "$workflow" >/dev/null
@@ -108,6 +111,7 @@ assert "Verify publish inputs" in names
 assert "Verify Crates.io token" in names
 assert "Verify workspace crate versions" in names
 assert "Verify publish ref" in names
+assert "Verify Crates.io publish state" in names
 assert "Run publish preflight" in names
 assert "Publish gxfkit-core" in names
 assert "Wait for gxfkit-core registry visibility" in names
@@ -121,6 +125,8 @@ assert 'CONFIRM" != "publish"' in input_run
 assert "Publish ref must be non-empty and contain no whitespace" in input_run
 assert "exit 1" in input_run
 preflight = next(run for run in runs if "cargo fmt --all --check" in run)
+state_check = next(run for run in runs if "check-crates-publish-state.sh" in run)
+assert 'bash scripts/check-crates-publish-state.sh "${EXPECTED_VERSION}" "${{ inputs.crate }}"' in state_check
 for required in [
     "cargo clippy --locked --all-targets -- -D warnings",
     "cargo test --all --locked",
@@ -137,6 +143,7 @@ for required in [
     "bash scripts/test-publish-crates-workflow.sh",
     "bash scripts/test-workflow-policy.sh",
     "python3 scripts/check-workflow-policy.py",
+    "bash scripts/test-check-crates-publish-state.sh",
     "bash scripts/test-trigger-crates-publish.sh",
     "bash scripts/test-github-source-sha256.sh",
     "bash scripts/test-version-consistency.sh",
@@ -219,6 +226,12 @@ assert ordered_names.index("Verify publish inputs") < ordered_names.index(
 assert ordered_names.index("Verify Crates.io token") < checkout_index
 assert ordered_names.index("Verify Crates.io token") < ordered_names.index(
     "Verify workspace crate versions"
+)
+assert ordered_names.index("Verify publish ref") < ordered_names.index(
+    "Verify Crates.io publish state"
+)
+assert ordered_names.index("Verify Crates.io publish state") < ordered_names.index(
+    "Run publish preflight"
 )
 assert ordered_names.index("Publish gxfkit-core") < ordered_names.index(
     "Wait for gxfkit-core registry visibility"

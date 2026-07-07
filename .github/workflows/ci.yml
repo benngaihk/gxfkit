@@ -53,6 +53,7 @@ jobs:
       - run: bash scripts/test-workflow-policy.sh
       - run: python3 scripts/check-workflow-policy.py
       - run: bash scripts/test-publish-ref.sh
+      - run: bash scripts/test-check-crates-publish-state.sh
       - run: bash scripts/test-trigger-crates-publish.sh
       - run: bash scripts/test-benchmark-summarize.sh
       - run: bash scripts/test-benchmark-summary.sh

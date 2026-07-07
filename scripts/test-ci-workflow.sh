@@ -50,6 +50,7 @@ grep -F "bash scripts/test-parity-doc.sh" "$workflow" >/dev/null
 grep -F "python3 scripts/check-parity-doc.py" "$workflow" >/dev/null
 grep -F "bash scripts/test-package-files.sh" "$workflow" >/dev/null
 grep -F "PACKAGE_FILES_ALLOW_DIRTY=0 bash scripts/check-package-files.sh" "$workflow" >/dev/null
+grep -F "bash scripts/test-check-crates-publish-state.sh" "$workflow" >/dev/null
 grep -F "bash scripts/test-trigger-crates-publish.sh" "$workflow" >/dev/null
 
 python3 - <<'PY'
@@ -81,6 +82,7 @@ assert any("test-parity-doc.sh" in run for run in runs)
 assert any("check-parity-doc.py" in run for run in runs)
 assert any("test-package-files.sh" in run for run in runs)
 assert any("PACKAGE_FILES_ALLOW_DIRTY=0 bash scripts/check-package-files.sh" in run for run in runs)
+assert any("test-check-crates-publish-state.sh" in run for run in runs)
 assert any("test-trigger-crates-publish.sh" in run for run in runs)
 assert any("test-publish-crates-workflow.sh" in run for run in runs)
 assert any("test-workflow-policy.sh" in run for run in runs)
