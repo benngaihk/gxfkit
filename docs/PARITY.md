@@ -149,7 +149,11 @@ i.e. its full standardization engine.
 sample: `gene/pseudogene -> CDS/exon/UTR/start_codon/stop_codon`, synthetic
 `mRNA`, synthetic exon for direct CDS, AGAT-style natural `locus_tag` numbering,
 direct-CDS isoform suppression, adjacent same-CDS fragment merging, and RefSeq
-orphan root skips observed in AGAT output.
+orphan root skips observed in AGAT output. The `gxf2gxf` fixture gate also now
+covers AGAT's first orphan/malformed-Parent standardization slice: orphan
+exon/CDS children with missing transcript parents get synthetic AGAT
+`gene -> RNA/mRNA` roots, orphan CDS gets a synthetic exon, and self-parent exon
+cycles use the self ID as the synthetic RNA while renaming the original exon ID.
 **Impact:** the pinned E. coli RefSeq stress sample now normalizes identical to
 AGAT (18,016 lines). Broader NCBI corpora such as Arabidopsis still need a fresh
 AGAT measurement before claiming full standardization parity.

@@ -89,6 +89,16 @@ struct TransposableElementPlan {
     template_child: usize,
 }
 
+#[derive(Clone)]
+struct OrphanTranscriptPlan {
+    gene_id: String,
+    transcript_id: String,
+    feature_type: &'static str,
+    template_child: usize,
+    children: Vec<usize>,
+    coords: (u64, u64),
+}
+
 struct Layout {
     children: Vec<Vec<usize>>,
     roots: Vec<usize>,
@@ -98,6 +108,7 @@ struct Layout {
     parent_override: Vec<Option<String>>,
     synthetic_tx: Vec<Option<SyntheticTranscriptPlan>>,
     te_plan: Vec<Option<TransposableElementPlan>>,
+    orphan_plans: Vec<OrphanTranscriptPlan>,
     synthetic_exon_id: Vec<Option<String>>,
 }
 
@@ -122,6 +133,7 @@ fn compute_layout(records: &[Record]) -> Layout {
     let mut parent_override = vec![None; n];
     let mut synthetic_tx = vec![None; n];
     let mut te_plan = vec![None; n];
+    let mut orphan_plans = Vec::new();
     let mut synthetic_exon_id = vec![None; n];
     let mut synthetic_exon_needed = vec![false; n];
     let mut skip_record = vec![false; n];
@@ -177,6 +189,85 @@ fn compute_layout(records: &[Record]) -> Layout {
         });
         skip_record[parent] = true;
     }
+
+    let mut orphan_groups: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, record) in records.iter().enumerate() {
+        if !needs_transcript_parent(&record.feature_type) {
+            continue;
+        }
+        let Some(parent_id) = record.parent() else {
+            continue;
+        };
+        if parent_id.is_empty() {
+            continue;
+        }
+        match by_id.get(parent_id) {
+            Some(&parent_idx) if parent_idx != i => {}
+            _ => {
+                orphan_groups
+                    .entry(parent_id.to_string())
+                    .or_default()
+                    .push(i);
+            }
+        }
+    }
+    let mut orphan_candidates: Vec<(String, Vec<usize>)> = orphan_groups.into_iter().collect();
+    orphan_candidates.sort_by(|(a_parent, a_children), (b_parent, b_children)| {
+        orphan_group_rank(records, a_children)
+            .cmp(&orphan_group_rank(records, b_children))
+            .then(a_parent.cmp(b_parent))
+    });
+    for (parent_id, mut group_children) in orphan_candidates {
+        group_children.sort_by(|&a, &b| {
+            records[a]
+                .start
+                .cmp(&records[b].start)
+                .then(records[a].end.cmp(&records[b].end))
+                .then(type_rank(&records[a].feature_type).cmp(&type_rank(&records[b].feature_type)))
+                .then(a.cmp(&b))
+        });
+        let gene_id = next_agat_id(&mut counters, &mut used_ids, "gene");
+        let feature_type = if group_children
+            .iter()
+            .any(|&child| records[child].feature_type.eq_ignore_ascii_case("CDS"))
+        {
+            "mRNA"
+        } else {
+            "RNA"
+        };
+        let mut start = u64::MAX;
+        let mut end = 0;
+        for &child in &group_children {
+            start = start.min(records[child].start);
+            end = end.max(records[child].end);
+            if records[child].id() == Some(parent_id.as_str()) {
+                gene_id_override[child] = Some(next_agat_id(
+                    &mut counters,
+                    &mut used_ids,
+                    &records[child].feature_type,
+                ));
+            }
+            if !records[child].feature_type.eq_ignore_ascii_case("exon") {
+                synthetic_exon_id[child] = Some(next_agat_id(&mut counters, &mut used_ids, "exon"));
+            }
+        }
+        orphan_plans.push(OrphanTranscriptPlan {
+            gene_id,
+            transcript_id: parent_id,
+            feature_type,
+            template_child: group_children[0],
+            children: group_children,
+            coords: (start, end),
+        });
+    }
+    orphan_plans.sort_by(|a, b| {
+        records[a.template_child]
+            .seqid
+            .cmp(&records[b.template_child].seqid)
+            .then(a.coords.0.cmp(&b.coords.0))
+            .then(a.coords.1.cmp(&b.coords.1))
+            .then(a.gene_id.cmp(&b.gene_id))
+    });
 
     for parent in 0..n {
         if !is_gene_like(&records[parent].feature_type) {
@@ -290,7 +381,27 @@ fn compute_layout(records: &[Record]) -> Layout {
         parent_override,
         synthetic_tx,
         te_plan,
+        orphan_plans,
         synthetic_exon_id,
+    }
+}
+
+fn orphan_group_rank(records: &[Record], children: &[usize]) -> u8 {
+    // AGAT assigns counters before final coordinate-sorted output. The observed
+    // fixture order is CDS-backed orphan transcripts, then self-parent cycles,
+    // then other missing-parent transcript groups.
+    if children
+        .iter()
+        .any(|&child| records[child].feature_type.eq_ignore_ascii_case("CDS"))
+    {
+        0
+    } else if children
+        .iter()
+        .any(|&child| records[child].id() == records[child].parent())
+    {
+        1
+    } else {
+        2
     }
 }
 
@@ -402,6 +513,9 @@ pub fn gff3_to_gff3(records: &[Record], out: &mut impl Write) -> std::io::Result
     out.write_all(b"##gff-version 3\n")?;
 
     let mut emitted = vec![false; records.len()];
+    for plan in &layout.orphan_plans {
+        emit_orphan_plan(plan, records, &layout, &mut emitted, out)?;
+    }
     for &root in &layout.roots {
         emit_tree(root, records, &layout, &mut emitted, out)?;
     }
@@ -409,6 +523,38 @@ pub fn gff3_to_gff3(records: &[Record], out: &mut impl Write) -> std::io::Result
         if !emitted[i] {
             emit_tree(i, records, &layout, &mut emitted, out)?;
         }
+    }
+    Ok(())
+}
+
+fn emit_orphan_plan(
+    plan: &OrphanTranscriptPlan,
+    records: &[Record],
+    layout: &Layout,
+    emitted: &mut [bool],
+    out: &mut impl Write,
+) -> std::io::Result<()> {
+    write_synthetic_gene(
+        out,
+        &records[plan.template_child],
+        &plan.gene_id,
+        plan.coords,
+    )?;
+    write_synthetic_orphan_transcript(out, &records[plan.template_child], plan)?;
+
+    for &child in &plan.children {
+        if let Some(exon_id) = &layout.synthetic_exon_id[child] {
+            write_synthetic_exon(
+                out,
+                &records[child],
+                exon_id,
+                &plan.transcript_id,
+                layout.coords[child],
+            )?;
+        }
+    }
+    for &child in &plan.children {
+        emit_tree(child, records, layout, emitted, out)?;
     }
     Ok(())
 }
@@ -477,6 +623,50 @@ fn emit_tree(
         emit_tree(child, records, layout, emitted, out)?;
     }
     Ok(())
+}
+
+fn write_synthetic_gene(
+    out: &mut impl Write,
+    template: &Record,
+    id: &str,
+    coords: (u64, u64),
+) -> std::io::Result<()> {
+    writeln!(
+        out,
+        "{}\tAGAT\tgene\t{}\t{}\t{}\t{}\t.\tID={}",
+        template.seqid,
+        coords.0,
+        coords.1,
+        if template.score.is_empty() {
+            "."
+        } else {
+            &template.score
+        },
+        strand_gff3(template.strand),
+        id,
+    )
+}
+
+fn write_synthetic_orphan_transcript(
+    out: &mut impl Write,
+    template: &Record,
+    plan: &OrphanTranscriptPlan,
+) -> std::io::Result<()> {
+    write!(
+        out,
+        "{}\tAGAT\t{}\t{}\t{}\t{}\t{}\t.\t",
+        template.seqid,
+        plan.feature_type,
+        plan.coords.0,
+        plan.coords.1,
+        if template.score.is_empty() {
+            "."
+        } else {
+            &template.score
+        },
+        strand_gff3(template.strand),
+    )?;
+    write_synthetic_attrs(out, template, &plan.transcript_id, &plan.gene_id)
 }
 
 fn write_synthetic_te_rna(
@@ -766,6 +956,84 @@ chr1\tFlyBase\texon\t10\t20\t.\t+\t.\tID=B-RA-E1;Parent=transcript:B-RA;Name=B-R
 chr1\tFlyBase\ttransposable_element\t30\t40\t.\t+\t.\tID=agat-transposable_element-1;Parent=gene:A;biotype=transposable_element;tag=Ensembl_canonical;transcript_id=A-RA
 chr1\tAGAT\tRNA\t30\t40\t.\t+\t.\tID=transcript:A-RA;Parent=agat-transposable_element-1;Name=A-RA-E1;exon_id=A-RA-E1;rank=1
 chr1\tFlyBase\texon\t30\t40\t.\t+\t.\tID=A-RA-E1;Parent=transcript:A-RA;Name=A-RA-E1;exon_id=A-RA-E1;rank=1
+"
+        );
+    }
+
+    #[test]
+    fn orphan_exon_gets_synthetic_gene_and_rna_like_agat() {
+        let gff = "\
+chr1\tsrc\texon\t10\t20\t.\t+\t.\tID=e_orphan;Parent=missing
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tAGAT\tgene\t10\t20\t.\t+\t.\tID=agat-gene-1
+chr1\tAGAT\tRNA\t10\t20\t.\t+\t.\tID=missing;Parent=agat-gene-1
+chr1\tsrc\texon\t10\t20\t.\t+\t.\tID=e_orphan;Parent=missing
+"
+        );
+    }
+
+    #[test]
+    fn orphan_cds_gets_synthetic_gene_mrna_and_exon_like_agat() {
+        let gff = "\
+chr1\tsrc\tCDS\t10\t20\t.\t+\t0\tID=cds_orphan;Parent=missing
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tAGAT\tgene\t10\t20\t.\t+\t.\tID=agat-gene-1
+chr1\tAGAT\tmRNA\t10\t20\t.\t+\t.\tID=missing;Parent=agat-gene-1
+chr1\tAGAT\texon\t10\t20\t.\t+\t.\tID=agat-exon-1;Parent=missing
+chr1\tsrc\tCDS\t10\t20\t.\t+\t0\tID=cds_orphan;Parent=missing
+"
+        );
+    }
+
+    #[test]
+    fn self_parent_exon_renames_child_id_like_agat() {
+        let gff = "\
+chr1\tsrc\texon\t10\t20\t.\t+\t.\tID=e_self;Parent=e_self
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tAGAT\tgene\t10\t20\t.\t+\t.\tID=agat-gene-1
+chr1\tAGAT\tRNA\t10\t20\t.\t+\t.\tID=e_self;Parent=agat-gene-1
+chr1\tsrc\texon\t10\t20\t.\t+\t.\tID=agat-exon-1;Parent=e_self
+"
+        );
+    }
+
+    #[test]
+    fn orphan_counter_order_is_separate_from_output_order_like_agat() {
+        let gff = "\
+chr1\tsrc\texon\t10\t20\t.\t+\t.\tID=e_orphan;Parent=missing_exon
+chr1\tsrc\tCDS\t30\t40\t.\t+\t0\tID=cds_orphan;Parent=missing_cds
+chr1\tsrc\texon\t50\t60\t.\t+\t.\tID=e_self;Parent=e_self
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tAGAT\tgene\t10\t20\t.\t+\t.\tID=agat-gene-3
+chr1\tAGAT\tRNA\t10\t20\t.\t+\t.\tID=missing_exon;Parent=agat-gene-3
+chr1\tsrc\texon\t10\t20\t.\t+\t.\tID=e_orphan;Parent=missing_exon
+chr1\tAGAT\tgene\t30\t40\t.\t+\t.\tID=agat-gene-1
+chr1\tAGAT\tmRNA\t30\t40\t.\t+\t.\tID=missing_cds;Parent=agat-gene-1
+chr1\tAGAT\texon\t30\t40\t.\t+\t.\tID=agat-exon-1;Parent=missing_cds
+chr1\tsrc\tCDS\t30\t40\t.\t+\t0\tID=cds_orphan;Parent=missing_cds
+chr1\tAGAT\tgene\t50\t60\t.\t+\t.\tID=agat-gene-2
+chr1\tAGAT\tRNA\t50\t60\t.\t+\t.\tID=e_self;Parent=agat-gene-2
+chr1\tsrc\texon\t50\t60\t.\t+\t.\tID=agat-exon-2;Parent=e_self
 "
         );
     }

@@ -50,7 +50,9 @@ The engine should make AGAT-standardization decisions explicit and testable:
    - [x] gene with direct exon/UTR/codon children;
    - [x] missing transcript parent with multiple CDS fragments;
    - [x] FlyBase-style transposable-element locus;
-   - orphan child and malformed Parent cases that AGAT tolerates.
+   - [x] orphan child and malformed Parent cases that AGAT tolerates
+         (first slice: missing transcript parents for exon/CDS and self-parent
+         exon cycles).
 6. [x] Compare fixture output against AGAT's `agat_convert_sp_gxf2gxf.pl` or the
    equivalent pinned AGAT standardization path, then record every divergence in
    `docs/PARITY.md`.

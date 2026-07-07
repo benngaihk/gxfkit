@@ -66,7 +66,10 @@ CDS/exon/UTR/codon children gets a renamed `agat-<type>-N` parent, a synthetic
 `AGAT mRNA` or `AGAT RNA` carrying the original gene ID, AGAT-compatible
 synthetic exon rows where observed, contiguous same-ID direct CDS fragment
 merging, FlyBase-style transposable-element locus remodeling, and rewritten
-child `Parent` links. This is not the full AGAT parser yet; broader
+child `Parent` links. It also covers the first orphan/malformed-Parent slice:
+missing transcript parents for exon/CDS children and self-parent exon cycles get
+AGAT-style synthetic `gene -> RNA/mRNA` roots, with child IDs rewritten only
+where AGAT does so to avoid ID collisions. This is not the full AGAT parser yet; broader
 standardization remains tracked in
 [M3-STANDARDIZATION-PLAN.md](M3-STANDARDIZATION-PLAN.md).
 
