@@ -88,11 +88,21 @@ conda install -c conda-forge -c bioconda gxfkit
 当前公开的 Bioconda 包是 `0.0.2`，并已通过干净安装、smoke 转换和拒绝覆盖验证；
 判断所有公开渠道能否作为严格生产证据前，请以发布状态文档为准。
 
+### Crates.io
+
+当前公开的 Crates.io 包是 `0.0.2`：
+
+```bash
+cargo install gxfkit
+```
+
+Crates.io 已通过干净安装、smoke 转换和拒绝覆盖验证；严格公开审计已经把
+GitHub Release、Bioconda 和 Crates.io 记录为 `0.0.2` 的生产安装渠道。
+
 ### 计划中的分发方式
 
-项目正在准备更适合生信用户的安装入口：
+项目正在准备更适合生信用户的更多安装入口：
 
-- Crates.io：`cargo install gxfkit`
 - Python/PyO3 绑定：`pip install gxfkit`
 
 这些入口在正式发布前不应写进生产文档作为已可用渠道。

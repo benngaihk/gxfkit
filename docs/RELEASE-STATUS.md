@@ -38,14 +38,18 @@ alone.
   VERSION=0.0.2 bash scripts/verify-bioconda-install.sh
   ```
 
-## Current public Crates.io: none
+## Current public Crates.io: `0.0.2`
 
-- Crates.io `gxfkit-core 0.0.2` is not published.
-- Crates.io `gxfkit 0.0.2` is not published.
-- Publishing is currently blocked by missing credentials. The local environment
-  did not have `CARGO_REGISTRY_TOKEN`, `~/.cargo/credentials.toml`, or
-  `~/.cargo/credentials`, and the GitHub repository had no configured secrets at
-  the time this status was recorded.
+- Crates.io `gxfkit-core 0.0.2` is published and visible with checksum and
+  non-zero crate size.
+- Crates.io `gxfkit 0.0.2` is published and visible with checksum and non-zero
+  crate size.
+- Crates.io `gxfkit 0.0.2` passed clean install verification from the official
+  registry on 2026-07-07 with:
+
+  ```bash
+  VERSION=0.0.2 bash scripts/verify-crates-install.sh
+  ```
 
 ## Current Cargo release candidate: `0.0.2`
 
@@ -61,17 +65,16 @@ normal build warms the Cargo cache, and `python3 scripts/check-release-check.py`
 guards that deterministic local preflight contract.
 
 The existing `v0.0.2` tag points at the release-candidate commit. It must not be
-moved. Bioconda metadata is updated to `0.0.2` with the GitHub source archive
-sha256:
+moved. The existing `v0.0.2` tag points at an older commit than current `main`.
+Bioconda metadata is updated to `0.0.2` with the GitHub source archive sha256:
 
 ```text
 b60a0c96f4d70abea6a0a77f26e2fe8092aa4ab913936bb502f2561689c27020
 ```
 
-Do not publish Crates.io `0.0.2` from `main` after the Bioconda metadata commit,
-because the existing `v0.0.2` tag points at an older commit. Publishing must use
-the existing `v0.0.2` tag, or the next public release must bump the workspace
-version before publishing.
+Crates.io `0.0.2` was published from the existing `v0.0.2` tag, not from
+`main` after the Bioconda metadata commit. Do not move the existing tag; the
+next public release must bump the workspace version before publishing.
 
 ## Important `0.0.1` boundary
 
@@ -86,9 +89,10 @@ Public `v0.0.1` GitHub Release and Bioconda packages predate the no-overwrite
 `-o/--output` guard and still overwrite existing output files. GitHub Release
 `v0.0.2` has the guard and has passed the strict GitHub release parity checks.
 Bioconda `0.0.2` also has the guard and passed clean install verification.
-Crates.io is not strict production evidence until `0.0.2` is live there too.
+Crates.io `0.0.2` is now strict production evidence after the final public
+audit passed.
 
-Full public closure for `0.0.2` still requires:
+Full public closure for `0.0.2` passed on 2026-07-07 with:
 
 ```bash
 python3 scripts/release-readiness.py --phase public --check-public --run-public-audit
@@ -121,14 +125,16 @@ The recorded summary was:
 public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]
 ```
 
+The final strict public install audit passed on 2026-07-07 with:
+
+```text
+public install summary: passed=[github-linux github-parity bioconda crates ] allowed_missing=[] failed=[]
+```
+
 ## Remaining `0.0.2` public closure
 
-1. Publish Crates.io `gxfkit-core 0.0.2` and `gxfkit 0.0.2` from the existing
-   `v0.0.2` tag after a maintainer provides credentials or configures the
-   `CARGO_REGISTRY_TOKEN` repository secret.
-2. Run the strict public install audit, including no-overwrite and core-corpus
-   GitHub Release parity at 100%, through `release-readiness --run-public-audit`
-   so the captured audit log is also verified.
+None. GitHub Release, Bioconda, Crates.io, and the strict public audit are all
+complete for `0.0.2`.
 
 If another release candidate is needed after the existing `v0.0.2` tag, bump the
 workspace version rather than moving the public tag.

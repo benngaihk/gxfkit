@@ -88,14 +88,17 @@ write_good_doc() {
   VERSION=0.0.2 bash scripts/verify-bioconda-install.sh
   ```
 
-## Current public Crates.io: none
+## Current public Crates.io: `0.0.2`
 
-- Crates.io `gxfkit-core 0.0.2` is not published.
-- Crates.io `gxfkit 0.0.2` is not published.
-- Publishing is currently blocked by missing credentials. The local environment
-  did not have `CARGO_REGISTRY_TOKEN`, `~/.cargo/credentials.toml`, or
-  `~/.cargo/credentials`, and the GitHub repository had no configured secrets at
-  the time this status was recorded.
+- Crates.io `gxfkit-core 0.0.2` is published and visible with checksum and
+  non-zero crate size.
+- Crates.io `gxfkit 0.0.2` is published and visible with checksum and non-zero
+  crate size.
+- Crates.io `gxfkit 0.0.2` passed clean install verification on 2026-07-07 with:
+
+  ```bash
+  VERSION=0.0.2 bash scripts/verify-crates-install.sh
+  ```
 
 ## Current Cargo release candidate: `0.0.2`
 
@@ -104,10 +107,9 @@ The local release preflight uses offline install/package smoke checks and
 preflight contract.
 
 The existing `v0.0.2` tag points at the release-candidate commit. It must not be
-moved. Do not publish Crates.io `0.0.2` from `main` after the Bioconda metadata
-commit, because the existing `v0.0.2` tag points at an older commit. Publishing
-must use the existing `v0.0.2` tag, or the next public release must bump the
-workspace version before publishing.
+moved. The existing `v0.0.2` tag points at an older commit than current `main`.
+Crates.io `0.0.2` was published from the existing `v0.0.2` tag, and the next public
+release must bump the workspace version before publishing.
 
 ## Important `0.0.1` boundary
 
@@ -146,6 +148,15 @@ The recorded summary was:
 ```text
 public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]
 ```
+
+The final strict public install audit passed on 2026-07-07 with:
+
+```text
+public install summary: passed=[github-linux github-parity bioconda crates ] allowed_missing=[] failed=[]
+```
+
+None. GitHub Release, Bioconda, Crates.io, and the strict public audit are all
+complete for `0.0.2`.
 MD
 }
 
@@ -231,16 +242,16 @@ expect_fail \
   'must mention: Anaconda package metadata lists Bioconda `gxfkit 0.0.2` files' \
   env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
 
-repo="$tmp/missing-crates-credentials"
+repo="$tmp/missing-final-closure"
 make_repo "$repo" 0.0.2
 write_good_doc "$repo"
-perl -0pi -e 's/Publishing is currently blocked by missing credentials\.//' \
+perl -0pi -e 's/None/Incomplete/g' \
   "$repo/docs/RELEASE-STATUS.md"
 git -C "$repo" add Cargo.toml docs/RELEASE-STATUS.md
 git -C "$repo" commit -q -m initial
 expect_fail \
-  missing-crates-credentials \
-  "must mention: blocked by missing credentials" \
+  missing-final-closure \
+  "must mention: None. GitHub Release, Bioconda, Crates.io, and the strict public audit are all complete" \
   env GXFKIT_ROOT="$repo" "$PY" "$ROOT/scripts/check-release-status-doc.py"
 
 repo="$tmp/bad-bioconda-version"
@@ -263,6 +274,8 @@ cat >"$repo/docs/RELEASE-STATUS.md" <<'MD'
 ## Current public GitHub Release: `0.0.1`
 
 ## Current public Bioconda: `0.0.0`
+
+## Current public Crates.io: `0.0.0`
 
 ## Current Cargo release candidate: `0.0.1`
 MD

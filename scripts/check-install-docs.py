@@ -28,6 +28,10 @@ def crates_unpublished(status: str) -> bool:
     return re.search(r"Crates\.io `gxfkit [^`]+` is not published", status) is not None
 
 
+def crates_published(status: str) -> bool:
+    return re.search(r"Current public Crates\.io: `[^`]+`", status) is not None
+
+
 def main() -> int:
     status = read("docs/RELEASE-STATUS.md")
     readme = read("README.md")
@@ -61,6 +65,15 @@ def main() -> int:
             "README.zh-CN.md",
             errors,
         )
+    elif crates_published(status):
+        require(readme, "The current public Crates.io package is `0.0.2`", "README.md", errors)
+        require(readme, "cargo install gxfkit", "README.md", errors)
+        require(readme, "Crates.io has passed clean install, smoke conversion, and no-overwrite verification", "README.md", errors)
+        require(readme, "GitHub Release, Bioconda, and Crates.io as production install channels", "README.md", errors)
+        require(readme_zh, "### Crates.io", "README.zh-CN.md", errors)
+        require(readme_zh, "当前公开的 Crates.io 包是 `0.0.2`", "README.zh-CN.md", errors)
+        require(readme_zh, "cargo install gxfkit", "README.zh-CN.md", errors)
+        require(readme_zh, "Crates.io 已通过干净安装、smoke 转换和拒绝覆盖验证", "README.zh-CN.md", errors)
 
     if errors:
         for error in errors:

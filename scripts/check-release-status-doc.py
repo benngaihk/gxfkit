@@ -62,6 +62,7 @@ def main() -> int:
     text = DOC.read_text(encoding="utf-8")
     github_version = status_version(text, "Current public GitHub Release")
     bioconda_version = status_version(text, "Current public Bioconda")
+    crates_version = status_version(text, "Current public Crates.io")
     cargo_candidate_version = status_version(text, "Current Cargo release candidate")
     errors: list[str] = []
 
@@ -101,13 +102,10 @@ def main() -> int:
     require(text, "smoke conversion", errors)
     require(text, "no-overwrite verification", errors)
     require(text, f"VERSION={version} bash scripts/verify-bioconda-install.sh", errors)
-    require(text, f"Crates.io `gxfkit-core {version}` is not published", errors)
-    require(text, f"Crates.io `gxfkit {version}` is not published", errors)
-    require(text, "blocked by missing credentials", errors)
-    require(text, "CARGO_REGISTRY_TOKEN", errors)
-    require(text, "~/.cargo/credentials.toml", errors)
-    require(text, "~/.cargo/credentials", errors)
-    require(text, "GitHub repository had no configured secrets", errors)
+    require(text, f"Crates.io `gxfkit-core {version}` is published and visible", errors)
+    require(text, f"Crates.io `gxfkit {version}` is published and visible", errors)
+    require(text, f"Crates.io `gxfkit {version}` passed clean install verification", errors)
+    require(text, f"VERSION={version} bash scripts/verify-crates-install.sh", errors)
 
     if github_version != version:
         errors.append(f"Current public GitHub Release {github_version} != workspace version {version}")
@@ -115,6 +113,8 @@ def main() -> int:
         errors.append(f"Current Cargo release candidate {cargo_candidate_version} != workspace version {version}")
     if bioconda_version != version:
         errors.append(f"Current public Bioconda {bioconda_version} != workspace version {version}")
+    if crates_version != version:
+        errors.append(f"Current public Crates.io {crates_version} != workspace version {version}")
 
     stale_workspace_claim = re.search(
         r"current working tree still reports workspace version `([^`]+)`",
@@ -131,8 +131,7 @@ def main() -> int:
     head = run_git("rev-parse", "HEAD")
     if tag_commit and head and tag_commit != head:
         require(text, f"existing `{tag}` tag points at an older commit", errors)
-        require(text, f"Do not publish Crates.io", errors)
-        require(text, f"Crates.io `gxfkit {version}` is not published", errors)
+        require(text, f"Crates.io `{version}` was published from the existing `{tag}` tag", errors)
         require(text, f"The existing `{tag}` tag points at the release-candidate commit. It must not be moved.", errors)
         require(text, "the next public release must bump the workspace version", errors)
     require(text, f"Current public Bioconda: `{version}`", errors)
@@ -141,6 +140,7 @@ def main() -> int:
     require(text, "python3 scripts/check-release-check.py", errors)
     require(text, "deterministic local preflight contract", errors)
     require(text, f"Remaining `{version}` public closure", errors)
+    require(text, "None. GitHub Release, Bioconda, Crates.io, and the strict public audit are all complete", errors)
     require(text, "python3 scripts/release-readiness.py --phase public --check-public --run-public-audit", errors)
     require(text, "release-readiness --run-public-audit", errors)
     require(text, 'VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates"', errors)
@@ -154,6 +154,11 @@ def main() -> int:
     require(
         text,
         "public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]",
+        errors,
+    )
+    require(
+        text,
+        "public install summary: passed=[github-linux github-parity bioconda crates ] allowed_missing=[] failed=[]",
         errors,
     )
 

@@ -57,8 +57,8 @@ def main(argv: list[str]) -> int:
     require(text, f"# gxfkit {tag} Release Notes", errors)
     require(text, "Status:", errors)
     require(text, "public GitHub Release", errors)
-    require(text, "public GitHub Release and verified Bioconda package", errors)
-    require(text, "Crates.io publication is still pending maintainer credentials", errors)
+    require(text, "public GitHub Release, Bioconda, and Crates.io package", errors)
+    require(text, "Full public readiness passed", errors)
     require(text, "public readiness is tracked by", errors)
     require(text, "AGAT 1.7.0", errors)
     require(text, "100.00% normalized parity", errors)
@@ -68,9 +68,7 @@ def main(argv: list[str]) -> int:
     require(text, "deterministic local", errors)
     require(text, "`release-check.sh` contract guard", errors)
     require(text, "Install Now", errors)
-    require(text, "Pending Install Channels", errors)
     require(text, f"conda install -c conda-forge -c bioconda gxfkit={version}", errors)
-    require(text, f"Crates.io `{version}` is pending maintainer credentials", errors)
     require(text, f"cargo install gxfkit --version {version}", errors)
     require(text, "printf 'release-check-exit-code=%s\\n' \"$rc\" >> release-check.log", errors)
     require(text, "release-check-exit-code", errors)
@@ -97,6 +95,11 @@ def main(argv: list[str]) -> int:
     require(
         text,
         "public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]",
+        errors,
+    )
+    require(
+        text,
+        "public install summary: passed=[github-linux github-parity bioconda crates ] allowed_missing=[] failed=[]",
         errors,
     )
     require(text, "scripts/release-evidence.sh --check-public > release-evidence.md", errors)

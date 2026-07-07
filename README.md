@@ -77,16 +77,15 @@ future releases with no-overwrite and core-corpus parity enabled by default.
 
 ### Cargo
 
-Once published to Crates.io:
+The current public Crates.io package is `0.0.2`:
 
 ```bash
 cargo install gxfkit
 ```
 
-Crates.io is not a current public channel while
-[docs/RELEASE-STATUS.md](docs/RELEASE-STATUS.md) records `gxfkit` as
-unpublished there; do not treat `cargo install gxfkit` as a production install
-path until this section stops being conditional.
+Crates.io has passed clean install, smoke conversion, and no-overwrite
+verification. The strict public audit records GitHub Release, Bioconda, and
+Crates.io as production install channels for `0.0.2`.
 
 ### Bioconda
 

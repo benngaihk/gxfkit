@@ -44,10 +44,9 @@ TOML
   cat >"$dir/docs/releases/v1.2.3.md" <<'MD'
 # gxfkit v1.2.3 Release Notes
 
-Status: public GitHub Release and verified Bioconda package. Crates.io
-publication is still pending maintainer credentials. Full public readiness is
-tracked by scripts/release-evidence.sh --check-public and the strict public
-install audit.
+Status: public GitHub Release, Bioconda, and Crates.io package. Full public
+readiness is tracked by scripts/release-evidence.sh --check-public and passed
+with the strict public install audit. Full public readiness passed.
 
 AGAT 1.7.0 remains the oracle. This release has 100.00% normalized parity on
 human_chr1, human_chr21, and yeast. It includes the no-overwrite behavior.
@@ -85,12 +84,9 @@ VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100 \
 BENCH_FILES="human_chr1 human_chr21 yeast" \
 VERSION=1.2.3 RELEASE_TAG=v1.2.3 bash scripts/verify-public-installs.sh
 public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]
+public install summary: passed=[github-linux github-parity bioconda crates ] allowed_missing=[] failed=[]
 scripts/release-evidence.sh --check-public > release-evidence.md
 ```
-
-## Pending Install Channels
-
-Crates.io `1.2.3` is pending maintainer credentials.
 
 ```bash
 cargo install gxfkit --version 1.2.3
