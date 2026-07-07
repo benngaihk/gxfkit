@@ -58,6 +58,69 @@ esac
 SH
 chmod +x "$fake_bin/gh"
 
+cat >"$fake_bin/curl" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+out=""
+url=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -o)
+      out="$2"
+      shift 2
+      ;;
+    -w)
+      shift 2
+      ;;
+    -H)
+      shift 2
+      ;;
+    -sS | -L)
+      shift
+      ;;
+    *)
+      url="$1"
+      shift
+      ;;
+  esac
+done
+case "$url" in
+  */crates/gxfkit-core/*)
+    state="${GXFKIT_FAKE_CRATES_GXFKIT_CORE:-absent}"
+    ;;
+  */crates/gxfkit/*)
+    state="${GXFKIT_FAKE_CRATES_GXFKIT:-absent}"
+    ;;
+  *)
+    echo "unexpected curl URL: $url" >&2
+    exit 2
+    ;;
+esac
+case "$state" in
+  absent)
+    : >"$out"
+    printf '404'
+    ;;
+  present)
+    printf '{"version":{"yanked":false}}\n' >"$out"
+    printf '200'
+    ;;
+  yanked)
+    printf '{"version":{"yanked":true}}\n' >"$out"
+    printf '200'
+    ;;
+  error)
+    printf '{"error":"boom"}\n' >"$out"
+    printf '500'
+    ;;
+  *)
+    echo "unexpected fake Crates.io state: $state" >&2
+    exit 2
+    ;;
+esac
+SH
+chmod +x "$fake_bin/curl"
+
 repo="$tmp/repo"
 make_repo "$repo"
 remote="$tmp/remote.git"
@@ -102,9 +165,46 @@ expect_fail \
   env GXFKIT_ROOT="$repo" PATH="$fake_bin:$PATH" \
     bash "$ROOT/scripts/trigger-crates-publish.sh" 1.2.3 both publish
 
+expect_fail \
+  both-core-already-present \
+  "refusing to publish: gxfkit-core 1.2.3 is already reserved on Crates.io (state: present); use crate scope 'gxfkit' if only the CLI crate remains" \
+  env GXFKIT_ROOT="$repo" GXFKIT_FAKE_SECRET=present GXFKIT_FAKE_CRATES_GXFKIT_CORE=present PATH="$fake_bin:$PATH" \
+    bash "$ROOT/scripts/trigger-crates-publish.sh" 1.2.3 both publish
+
+expect_fail \
+  core-already-yanked \
+  "refusing to publish: gxfkit-core 1.2.3 is already reserved on Crates.io (state: yanked)" \
+  env GXFKIT_ROOT="$repo" GXFKIT_FAKE_SECRET=present GXFKIT_FAKE_CRATES_GXFKIT_CORE=yanked PATH="$fake_bin:$PATH" \
+    bash "$ROOT/scripts/trigger-crates-publish.sh" 1.2.3 gxfkit-core publish
+
+expect_fail \
+  cli-missing-core \
+  "refusing to publish: gxfkit-core 1.2.3 is not visible on Crates.io; publish gxfkit-core first and wait for registry propagation" \
+  env GXFKIT_ROOT="$repo" GXFKIT_FAKE_SECRET=present PATH="$fake_bin:$PATH" \
+    bash "$ROOT/scripts/trigger-crates-publish.sh" 1.2.3 gxfkit publish
+
+expect_fail \
+  cli-core-yanked \
+  "refusing to publish: gxfkit-core 1.2.3 is yanked on Crates.io" \
+  env GXFKIT_ROOT="$repo" GXFKIT_FAKE_SECRET=present GXFKIT_FAKE_CRATES_GXFKIT_CORE=yanked PATH="$fake_bin:$PATH" \
+    bash "$ROOT/scripts/trigger-crates-publish.sh" 1.2.3 gxfkit publish
+
+expect_fail \
+  cli-already-present \
+  "refusing to publish: gxfkit 1.2.3 is already reserved on Crates.io (state: present)" \
+  env GXFKIT_ROOT="$repo" GXFKIT_FAKE_SECRET=present GXFKIT_FAKE_CRATES_GXFKIT_CORE=present GXFKIT_FAKE_CRATES_GXFKIT=present PATH="$fake_bin:$PATH" \
+    bash "$ROOT/scripts/trigger-crates-publish.sh" 1.2.3 gxfkit publish
+
+expect_fail \
+  crates-api-error \
+  "failed to check Crates.io state for gxfkit-core 1.2.3: HTTP 500" \
+  env GXFKIT_ROOT="$repo" GXFKIT_FAKE_SECRET=present GXFKIT_FAKE_CRATES_GXFKIT_CORE=error PATH="$fake_bin:$PATH" \
+    bash "$ROOT/scripts/trigger-crates-publish.sh" 1.2.3 both publish
+
 env \
   GXFKIT_ROOT="$repo" \
   GXFKIT_FAKE_SECRET=present \
+  GXFKIT_FAKE_CRATES_GXFKIT_CORE=present \
   GXFKIT_TRIGGER_CRATES_PUBLISH_DRY_RUN=1 \
   PATH="$fake_bin:$PATH" \
   bash "$ROOT/scripts/trigger-crates-publish.sh" 1.2.3 gxfkit publish \
