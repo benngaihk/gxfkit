@@ -103,6 +103,24 @@ VERSION=0.0.2 RELEASE_TAG=v0.0.2 bash scripts/verify-public-installs.sh
 Run the strict audit through `release-readiness --run-public-audit` so the
 captured audit log is also verified.
 
+A staged public install audit allowing only the missing Crates.io channel passed
+on 2026-07-07 with:
+
+```bash
+VERIFY_PUBLIC_INSTALL_CHANNELS="github-linux github-parity bioconda crates" \
+VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=1 \
+VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1 \
+VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100 \
+BENCH_FILES="human_chr1 human_chr21 yeast" \
+VERSION=0.0.2 RELEASE_TAG=v0.0.2 bash scripts/verify-public-installs.sh
+```
+
+The recorded summary was:
+
+```text
+public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]
+```
+
 ## Remaining `0.0.2` public closure
 
 1. Publish Crates.io `gxfkit-core 0.0.2` and `gxfkit 0.0.2` from the existing

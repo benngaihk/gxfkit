@@ -147,6 +147,15 @@ def main() -> int:
     require(text, "VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=0", errors)
     require(text, "VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE=1", errors)
     require(text, "VERIFY_PUBLIC_INSTALLS_MIN_PARITY=100", errors)
+    require(text, "A staged public install audit allowing only the missing Crates.io channel passed", errors)
+    require(text, "on 2026-07-07", errors)
+    require(text, "VERIFY_PUBLIC_INSTALLS_ALLOW_MISSING_CRATES=1", errors)
+    require(text, "BENCH_FILES=\"human_chr1 human_chr21 yeast\"", errors)
+    require(
+        text,
+        "public install summary: passed=[github-linux github-parity bioconda ] allowed_missing=[crates ] failed=[]",
+        errors,
+    )
 
     if errors:
         for error in errors:
