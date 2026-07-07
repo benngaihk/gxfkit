@@ -100,9 +100,9 @@ runs = [step.get("run", "") for step in steps if isinstance(step, dict)]
 names = [step.get("name", "") for step in steps if isinstance(step, dict)]
 assert steps[0]["name"] == "Verify publish inputs"
 assert steps[1]["name"] == "Verify Crates.io token"
-checkout = next(step for step in steps if isinstance(step, dict) and step.get("uses") == "actions/checkout@v4")
+checkout = next(step for step in steps if isinstance(step, dict) and step.get("uses") == "actions/checkout@v7")
 checkout_index = steps.index(checkout)
-assert checkout["uses"] == "actions/checkout@v4"
+assert checkout["uses"] == "actions/checkout@v7"
 assert checkout["with"]["ref"] == "${{ env.PUBLISH_REF }}"
 assert "Verify publish inputs" in names
 assert "Verify Crates.io token" in names

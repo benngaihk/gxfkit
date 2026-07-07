@@ -98,7 +98,7 @@ publish_names = [
     if isinstance(step, dict)
 ]
 publish_steps = data["jobs"]["publish"]["steps"]
-assert publish_steps[0]["uses"] == "actions/checkout@v4"
+assert publish_steps[0]["uses"] == "actions/checkout@v7"
 assert publish_steps[0]["with"]["ref"] == "${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}"
 assert any(
     isinstance(step, dict)

@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -87,7 +87,7 @@ jobs:
     # and gxfkit GTF, then summarize.py diffs them through the normalizer and
     # fails the build if any file's parity drops below MIN_PARITY.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download core corpus (parity-guaranteed Ensembl files)
         run: bash corpus/download.sh core
       - name: Build benchmark image
@@ -110,7 +110,7 @@ jobs:
           python3 scripts/check-benchmark-summary.py --require
           bash benchmark/write-residuals.sh benchmark/results
           exit "$status"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: parity-results

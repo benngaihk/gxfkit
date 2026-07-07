@@ -63,7 +63,7 @@ grep -F -- '--public-audit-no-overwrite "$VERIFY_PUBLIC_INSTALLS_NO_OVERWRITE"' 
 grep -F -- '--public-audit-min-parity "$VERIFY_PUBLIC_INSTALLS_MIN_PARITY"' "$workflow" >/dev/null
 grep -F -- '--public-audit-bench-files "$BENCH_FILES"' "$workflow" >/dev/null
 grep -F -- '--public-audit-crates-install-script "$VERIFY_CRATES_INSTALL_SCRIPT"' "$workflow" >/dev/null
-grep -F "uses: actions/upload-artifact@v4" "$workflow" >/dev/null
+grep -F "uses: actions/upload-artifact@v7" "$workflow" >/dev/null
 grep -F "name: release-evidence" "$workflow" >/dev/null
 grep -F "path: |" "$workflow" >/dev/null
 grep -F "release-evidence.md" "$workflow" >/dev/null
@@ -99,7 +99,7 @@ assert steps[0]["name"] == "Validate workflow inputs"
 assert "Version must look like X.Y.Z" in steps[0]["run"]
 assert "Version and tag disagree" in steps[0]["run"]
 checkout = steps[1]
-assert checkout["uses"] == "actions/checkout@v4"
+assert checkout["uses"] == "actions/checkout@v7"
 assert checkout["with"]["ref"] == "${{ inputs.tag }}"
 assert any("verify-public-installs.sh 2>&1 | tee public-audit.log" in run for run in runs)
 assert any("audit_rc=${PIPESTATUS[0]}" in run for run in runs)
