@@ -15,10 +15,11 @@ order-only normalization), and a fraction of the wall-clock and memory.
 It stands on the shoulders of AGAT — AGAT remains the reference for correctness,
 and gxfkit treats its output as the gold standard.
 
-> **Status: alpha.** One subcommand (`gff2gtf`), byte-identical to AGAT after
-> normalization on the core corpus (human chr1, human chr21, yeast) — with a
-> reproducible benchmark + parity harness. Current focus: packaging and release
-> distribution.
+> **Status: alpha.** The production-supported path is `gff2gtf`, byte-identical
+> to AGAT after normalization on the core corpus (human chr1, human chr21,
+> yeast) — with a reproducible benchmark + parity harness. `main` also carries
+> an experimental first `gxf2gxf` standardization slice for M3; it is fixture
+> tested, but not yet a full AGAT replacement.
 > See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
@@ -123,6 +124,8 @@ powershell -File scripts/with-msvc-env.ps1 cargo build --release
 
 ## Usage
 
+### `gff2gtf`
+
 ```text
 gxfkit gff2gtf [-g <input.gff[.gz]>] [-o <output.gtf>] [--sanitize]
   -g, --gff <FILE>      Input GFF3 file, plain or gzipped (default: stdin)
@@ -155,6 +158,22 @@ gxfkit:
 
 ```bash
 gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
+```
+
+### `gxf2gxf` experimental
+
+`gxf2gxf` is the M3 standardization-engine entry point. It currently covers the
+first AGAT-verified slice: standard GFF3 write-back, parent coordinate repair,
+and RefSeq-style direct-CDS hierarchy completion with synthetic mRNA/exon rows.
+Broader AGAT standardization remains tracked in
+[docs/M3-STANDARDIZATION-PLAN.md](docs/M3-STANDARDIZATION-PLAN.md) and
+[issue #4](https://github.com/benngaihk/gxfkit/issues/4).
+
+```text
+gxfkit gxf2gxf [-g <input.gff[.gz]>] [-o <output.gff>] [--sanitize]
+  -g, --gff, --gxf <FILE>  Input GFF3 file, plain or gzipped (default: stdin)
+  -o, --output <FILE>      Output GFF3 file; refuses to overwrite (default: stdout)
+  --sanitize               Skip malformed data records with stderr diagnostics
 ```
 
 See [docs/FAQ.md](docs/FAQ.md) for gzip, parity, and pipeline notes.

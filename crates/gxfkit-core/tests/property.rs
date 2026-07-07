@@ -3,6 +3,7 @@
 
 use gxfkit_core::convert::gff3_to_gtf;
 use gxfkit_core::reader::read_all;
+use gxfkit_core::standardize::gff3_to_gff3;
 use proptest::prelude::*;
 use std::io::Cursor;
 
@@ -74,6 +75,8 @@ proptest! {
         if let Ok(recs) = read_all(Cursor::new(&data)) {
             let mut out = Vec::new();
             let _ = gff3_to_gtf(&recs, &mut out);
+            out.clear();
+            let _ = gff3_to_gff3(&recs, &mut out);
         }
     }
 
@@ -89,6 +92,8 @@ proptest! {
         if let Ok(recs) = read_all(Cursor::new(input.as_bytes())) {
             let mut out = Vec::new();
             let _ = gff3_to_gtf(&recs, &mut out);
+            out.clear();
+            let _ = gff3_to_gff3(&recs, &mut out);
         }
     }
 
@@ -106,6 +111,13 @@ proptest! {
         for l in s.lines() {
             prop_assert_eq!(l.matches('\t').count(), 8, "9 columns expected: {}", l);
             prop_assert!(l.contains("gene_id \""), "missing gene_id: {}", l);
+        }
+
+        let mut gff3_out = Vec::new();
+        gff3_to_gff3(&recs, &mut gff3_out).expect("standardization");
+        let gff3 = String::from_utf8(gff3_out).expect("utf8 gff3 out");
+        for l in gff3.lines().filter(|l| !l.starts_with('#')) {
+            prop_assert_eq!(l.matches('\t').count(), 8, "9 columns expected: {}", l);
         }
     }
 }

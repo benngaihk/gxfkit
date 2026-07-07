@@ -14,6 +14,7 @@ pub mod attributes;
 pub mod convert;
 pub mod model;
 pub mod reader;
+pub mod standardize;
 
 pub use model::{Record, Strand};
 pub use reader::{GffReader, ParseError};

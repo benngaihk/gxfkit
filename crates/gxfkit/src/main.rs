@@ -16,6 +16,7 @@ USAGE:
 
 SUBCOMMANDS:
     gff2gtf    Convert GFF3 to GTF
+    gxf2gxf    Standardize GFF3 to GFF3
     help       Show this message
     version    Print version
 
@@ -38,10 +39,27 @@ Gzip input is auto-detected (magic bytes), from a file or stdin.
 Aliases for AGAT compatibility: --gff, -i accepted for input.
 ";
 
+const GXF2GXF_USAGE: &str = "\
+gxfkit gxf2gxf — standardize GFF3 to GFF3
+
+USAGE:
+    gxfkit gxf2gxf [-g <input.gff>] [-o <output.gff>] [--sanitize]
+
+OPTIONS:
+    -g, --gff, --gxf <FILE>  Input GFF3 file, plain or gzipped (default: stdin)
+    -o, --output <FILE>      Output GFF3 file; refuses to overwrite (default: stdout)
+    --sanitize               Skip malformed data records with stderr diagnostics
+    -h, --help               Show this message
+
+Gzip input is auto-detected (magic bytes), from a file or stdin.
+Aliases for AGAT compatibility: --gtf, --gxf, --gff, -i accepted for input.
+";
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("gff2gtf") => run_result(cmd_gff2gtf(&args[1..])),
+        Some("gxf2gxf") => run_result(cmd_gxf2gxf(&args[1..])),
         Some("version") | Some("--version") | Some("-V") => {
             println!("gxfkit {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
@@ -76,6 +94,35 @@ fn is_broken_pipe(e: &io::Error) -> bool {
 }
 
 fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
+    let Some(records) = read_command_records(args, GFF2GTF_USAGE, "gff2gtf")? else {
+        return Ok(());
+    };
+    let mut out = open_command_output(records.output.as_deref())?;
+    gxfkit_core::convert::gff3_to_gtf(&records.records, &mut out)?;
+    out.flush()?;
+    Ok(())
+}
+
+fn cmd_gxf2gxf(args: &[String]) -> io::Result<()> {
+    let Some(records) = read_command_records(args, GXF2GXF_USAGE, "gxf2gxf")? else {
+        return Ok(());
+    };
+    let mut out = open_command_output(records.output.as_deref())?;
+    gxfkit_core::standardize::gff3_to_gff3(&records.records, &mut out)?;
+    out.flush()?;
+    Ok(())
+}
+
+struct CommandRecords {
+    records: Vec<gxfkit_core::Record>,
+    output: Option<String>,
+}
+
+fn read_command_records(
+    args: &[String],
+    usage: &str,
+    command: &str,
+) -> io::Result<Option<CommandRecords>> {
     let mut input: Option<String> = None;
     let mut output: Option<String> = None;
     let mut sanitize = false;
@@ -84,10 +131,10 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "-h" | "--help" => {
-                print!("{GFF2GTF_USAGE}");
-                return Ok(());
+                print!("{usage}");
+                return Ok(None);
             }
-            "-g" | "--gff" | "-i" | "--input" => {
+            "-g" | "--gtf" | "--gff" | "--gxf" | "-i" | "--input" => {
                 input = Some(next_value(&mut it, arg)?);
             }
             "-o" | "--output" => {
@@ -99,7 +146,7 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
             other => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
-                    format!("unexpected argument '{other}' (see `gxfkit gff2gtf --help`)"),
+                    format!("unexpected argument '{other}' (see `gxfkit {command} --help`)"),
                 ));
             }
         }
@@ -121,13 +168,14 @@ fn cmd_gff2gtf(args: &[String]) -> io::Result<()> {
         }
     };
 
-    let mut out: Box<dyn Write> = match output {
-        Some(path) => Box::new(BufWriter::new(create_output(&path)?)),
+    Ok(Some(CommandRecords { records, output }))
+}
+
+fn open_command_output(output: Option<&str>) -> io::Result<Box<dyn Write>> {
+    Ok(match output {
+        Some(path) => Box::new(BufWriter::new(create_output(path)?)),
         None => Box::new(BufWriter::new(io::stdout().lock())),
-    };
-    gxfkit_core::convert::gff3_to_gtf(&records, &mut out)?;
-    out.flush()?;
-    Ok(())
+    })
 }
 
 fn create_output(path: &str) -> io::Result<File> {

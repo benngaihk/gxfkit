@@ -28,8 +28,16 @@ fn run_gff2gtf(input: &[u8]) -> String {
 }
 
 fn run_gff2gtf_args(args: &[&str], input: &[u8]) -> Output {
+    run_subcommand_args("gff2gtf", args, input)
+}
+
+fn run_gxf2gxf_args(args: &[&str], input: &[u8]) -> Output {
+    run_subcommand_args("gxf2gxf", args, input)
+}
+
+fn run_subcommand_args(command: &str, args: &[&str], input: &[u8]) -> Output {
     let mut child = Command::new(BIN)
-        .args(["gff2gtf"])
+        .arg(command)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -65,6 +73,7 @@ fn top_level_help_and_version_are_stable() {
     let help_stdout = String::from_utf8(help.stdout).unwrap();
     assert!(help_stdout.contains("USAGE:"));
     assert!(help_stdout.contains("gff2gtf"));
+    assert!(help_stdout.contains("gxf2gxf"));
 
     let gff2gtf_help = run_args(&["gff2gtf", "--help"]);
     assert!(
@@ -74,6 +83,16 @@ fn top_level_help_and_version_are_stable() {
     );
     let gff2gtf_help_stdout = String::from_utf8(gff2gtf_help.stdout).unwrap();
     assert!(gff2gtf_help_stdout.contains("refuses to overwrite"));
+
+    let gxf2gxf_help = run_args(&["gxf2gxf", "--help"]);
+    assert!(
+        gxf2gxf_help.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&gxf2gxf_help.stderr)
+    );
+    let gxf2gxf_help_stdout = String::from_utf8(gxf2gxf_help.stdout).unwrap();
+    assert!(gxf2gxf_help_stdout.contains("standardize GFF3"));
+    assert!(gxf2gxf_help_stdout.contains("refuses to overwrite"));
 
     let version = run_args(&["version"]);
     assert!(
@@ -104,6 +123,46 @@ fn invalid_cli_arguments_fail_with_diagnostics() {
         "missing flag value should fail"
     );
     assert!(String::from_utf8_lossy(&missing_value.stderr).contains("requires a value"));
+}
+
+#[test]
+fn gxf2gxf_standardizes_direct_cds_and_refuses_overwrite() {
+    let input = b"\
+##gff-version 3
+chr1\tRefSeq\tgene\t1\t100\t.\t+\t.\tID=gene1;locus_tag=LT001
+chr1\tRefSeq\tCDS\t10\t50\t.\t+\t0\tID=cds1;Parent=gene1;protein_id=p1;locus_tag=LT001
+";
+    let out = run_gxf2gxf_args(&[], input);
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(stdout.starts_with("##gff-version 3\n"));
+    assert!(stdout.contains("\tAGAT\tmRNA\t10\t50\t"));
+    assert!(stdout.contains("ID=gene1;Parent=agat-gene-1"));
+    assert!(stdout.contains("\tAGAT\texon\t10\t50\t"));
+    assert!(stdout.contains("ID=agat-exon-1;Parent=gene1"));
+    assert!(stdout.contains("\tRefSeq\tCDS\t10\t50\t.\t+\t0\tID=cds1;Parent=gene1"));
+
+    let out_path = temp_path("standardized.gff3");
+    let out_arg = out_path.to_string_lossy().to_string();
+    let created = run_gxf2gxf_args(&["-o", &out_arg], input);
+    assert!(
+        created.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&created.stderr)
+    );
+    assert!(created.stdout.is_empty());
+
+    fs::write(&out_path, "sentinel\n").unwrap();
+    let refused = run_gxf2gxf_args(&["-o", &out_arg], input);
+    assert!(!refused.status.success(), "existing output should fail");
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("refusing to overwrite"));
+    assert_eq!(fs::read_to_string(&out_path).unwrap(), "sentinel\n");
+
+    let _ = fs::remove_file(out_path);
 }
 
 #[test]

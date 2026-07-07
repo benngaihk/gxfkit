@@ -37,15 +37,15 @@ The engine should make AGAT-standardization decisions explicit and testable:
 
 ## First implementation slice
 
-1. Add a core standardization module behind `gxfkit-core`, separate from GTF
+1. [x] Add a core standardization module behind `gxfkit-core`, separate from GTF
    emission.
-2. Move the already-covered direct-child RefSeq and transposable-element
+2. [ ] Move the already-covered direct-child RefSeq and transposable-element
    hierarchy rules behind standardization-oriented helpers without changing
    `gff2gtf` output.
-3. Add `gxfkit gxf2gxf -i <in.gff3> -o <out.gff3>` with the same input/output
+3. [x] Add `gxfkit gxf2gxf -i <in.gff3> -o <out.gff3>` with the same input/output
    safety behavior as `gff2gtf`, including gzip input and no-overwrite output.
-4. Build the first GFF3 writer around the existing ordered attributes model.
-5. Add fixtures for:
+4. [x] Build the first GFF3 writer around the existing ordered attributes model.
+5. [ ] Add fixtures for:
    - gene or pseudogene with direct CDS child;
    - gene with direct exon/UTR/codon children;
    - missing transcript parent with multiple CDS fragments;
