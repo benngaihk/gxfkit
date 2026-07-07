@@ -7,6 +7,7 @@ cd "$ROOT"
 
 required_direct_scripts=(
   scripts/release-evidence.sh
+  scripts/trigger-crates-publish.sh
 )
 
 for script in "${required_direct_scripts[@]}"; do

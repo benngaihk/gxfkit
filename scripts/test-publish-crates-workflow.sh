@@ -56,6 +56,7 @@ grep -F -- "--expected-version \"\$EXPECTED_VERSION\"" "$workflow" >/dev/null
 grep -F "bash scripts/test-publish-crates-workflow.sh" "$workflow" >/dev/null
 grep -F "bash scripts/test-workflow-policy.sh" "$workflow" >/dev/null
 grep -F "python3 scripts/check-workflow-policy.py" "$workflow" >/dev/null
+grep -F "bash scripts/test-trigger-crates-publish.sh" "$workflow" >/dev/null
 grep -F "bash scripts/test-benchmark-summary.sh" "$workflow" >/dev/null
 grep -F "python3 scripts/check-benchmark-summary.py" "$workflow" >/dev/null
 grep -F "bash scripts/test-parity-doc.sh" "$workflow" >/dev/null
@@ -136,6 +137,7 @@ for required in [
     "bash scripts/test-publish-crates-workflow.sh",
     "bash scripts/test-workflow-policy.sh",
     "python3 scripts/check-workflow-policy.py",
+    "bash scripts/test-trigger-crates-publish.sh",
     "bash scripts/test-github-source-sha256.sh",
     "bash scripts/test-version-consistency.sh",
     "bash scripts/test-release-readiness.sh",

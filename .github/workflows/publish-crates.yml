@@ -158,6 +158,7 @@ jobs:
           bash scripts/test-workflow-policy.sh
           python3 scripts/check-workflow-policy.py
           bash scripts/test-publish-ref.sh
+          bash scripts/test-trigger-crates-publish.sh
           bash scripts/test-benchmark-summarize.sh
           bash scripts/test-benchmark-summary.sh
           python3 scripts/check-benchmark-summary.py

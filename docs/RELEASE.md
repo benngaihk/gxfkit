@@ -139,6 +139,16 @@ GitHub workflow below or run from a clean Cargo environment with no
 `source.crates-io.replace-with`.
 
 Alternatively, run the manual **Publish Crates.io** GitHub Actions workflow.
+The safest entrypoint is:
+
+```bash
+scripts/trigger-crates-publish.sh X.Y.Z both publish
+```
+
+That wrapper checks that `vX.Y.Z` exists locally and on `origin`, verifies the
+remote tag resolves to the same commit as the local tag, verifies the
+`CARGO_REGISTRY_TOKEN` repository secret is configured, and triggers the
+workflow with `source_ref=vX.Y.Z`.
 It first validates that the requested version looks like `X.Y.Z`, that
 `source_ref` is non-empty and contains no whitespace, and that `confirm` is
 exactly `publish`, before checking out the publish ref. It requires a repository
