@@ -75,6 +75,9 @@ while [ "$#" -gt 0 ]; do
     -H)
       shift 2
       ;;
+    --connect-timeout | --max-time)
+      shift 2
+      ;;
     -sS | -L)
       shift
       ;;

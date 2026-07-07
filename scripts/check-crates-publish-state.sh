@@ -4,6 +4,8 @@ set -euo pipefail
 
 CRATES_IO_API_BASE="${GXFKIT_CRATES_IO_API_BASE:-https://crates.io/api/v1}"
 CRATES_IO_USER_AGENT="${GXFKIT_CRATES_IO_USER_AGENT:-gxfkit-release-state-check}"
+CRATES_IO_CONNECT_TIMEOUT="${GXFKIT_CRATES_IO_CONNECT_TIMEOUT:-10}"
+CRATES_IO_MAX_TIME="${GXFKIT_CRATES_IO_MAX_TIME:-60}"
 
 usage() {
   cat >&2 <<'USAGE'
@@ -43,6 +45,26 @@ if ! command -v python3 >/dev/null 2>&1; then
   echo "python3 is required to parse Crates.io version state before publishing" >&2
   exit 1
 fi
+case "$CRATES_IO_CONNECT_TIMEOUT" in
+  '' | *[!0-9]*)
+    echo "GXFKIT_CRATES_IO_CONNECT_TIMEOUT must be a positive integer, got: $CRATES_IO_CONNECT_TIMEOUT" >&2
+    exit 2
+    ;;
+  0)
+    echo "GXFKIT_CRATES_IO_CONNECT_TIMEOUT must be a positive integer, got: 0" >&2
+    exit 2
+    ;;
+esac
+case "$CRATES_IO_MAX_TIME" in
+  '' | *[!0-9]*)
+    echo "GXFKIT_CRATES_IO_MAX_TIME must be a positive integer, got: $CRATES_IO_MAX_TIME" >&2
+    exit 2
+    ;;
+  0)
+    echo "GXFKIT_CRATES_IO_MAX_TIME must be a positive integer, got: 0" >&2
+    exit 2
+    ;;
+esac
 
 crates_io_version_state() {
   local crate_name="$1"
@@ -54,6 +76,8 @@ crates_io_version_state() {
   error_file="$(mktemp)"
   if ! http_code="$(
     curl -sS -L \
+      --connect-timeout "$CRATES_IO_CONNECT_TIMEOUT" \
+      --max-time "$CRATES_IO_MAX_TIME" \
       -H "User-Agent: $CRATES_IO_USER_AGENT" \
       -o "$response_file" \
       -w '%{http_code}' \

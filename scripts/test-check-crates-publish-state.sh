@@ -44,6 +44,9 @@ while [ "$#" -gt 0 ]; do
     -H)
       shift 2
       ;;
+    --connect-timeout | --max-time)
+      shift 2
+      ;;
     -sS | -L)
       shift
       ;;
@@ -105,6 +108,18 @@ expect_fail \
   "crate scope must be one of: both, gxfkit-core, gxfkit; got: bad" \
   env PATH="$fake_bin:$PATH" \
     bash scripts/check-crates-publish-state.sh 1.2.3 bad
+
+expect_fail \
+  bad-connect-timeout \
+  "GXFKIT_CRATES_IO_CONNECT_TIMEOUT must be a positive integer, got: nope" \
+  env GXFKIT_CRATES_IO_CONNECT_TIMEOUT=nope PATH="$fake_bin:$PATH" \
+    bash scripts/check-crates-publish-state.sh 1.2.3 both
+
+expect_fail \
+  bad-max-time \
+  "GXFKIT_CRATES_IO_MAX_TIME must be a positive integer, got: 0" \
+  env GXFKIT_CRATES_IO_MAX_TIME=0 PATH="$fake_bin:$PATH" \
+    bash scripts/check-crates-publish-state.sh 1.2.3 both
 
 env PATH="$fake_bin:$PATH" \
   bash scripts/check-crates-publish-state.sh 1.2.3 both \
