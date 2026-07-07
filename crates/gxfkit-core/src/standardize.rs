@@ -78,6 +78,7 @@ fn next_agat_id(
 struct SyntheticTranscriptPlan {
     gene_id: String,
     transcript_id: String,
+    feature_type: &'static str,
     template_child: usize,
 }
 
@@ -132,6 +133,14 @@ fn compute_layout(records: &[Record]) -> Layout {
         synthetic_tx[parent] = Some(SyntheticTranscriptPlan {
             gene_id: new_gene_id.clone(),
             transcript_id: source_gene_id.clone(),
+            feature_type: if records[template_child]
+                .feature_type
+                .eq_ignore_ascii_case("CDS")
+            {
+                "mRNA"
+            } else {
+                "RNA"
+            },
             template_child,
         });
 
@@ -335,8 +344,9 @@ fn write_synthetic_transcript(
 ) -> std::io::Result<()> {
     write!(
         out,
-        "{}\tAGAT\tmRNA\t{}\t{}\t{}\t{}\t.\t",
+        "{}\tAGAT\t{}\t{}\t{}\t{}\t{}\t.\t",
         parent.seqid,
+        plan.feature_type,
         layout.coords[parent_idx].0,
         layout.coords[parent_idx].1,
         if parent.score.is_empty() {
@@ -494,6 +504,24 @@ chr1\tRefSeq\tgene\t10\t50\t.\t+\t.\tID=agat-gene-1;locus_tag=LT001
 chr1\tAGAT\tmRNA\t10\t50\t.\t+\t.\tID=gene1;Parent=agat-gene-1;locus_tag=LT001;protein_id=p1
 chr1\tAGAT\texon\t10\t50\t.\t+\t.\tID=agat-exon-1;Parent=gene1;locus_tag=LT001;protein_id=p1
 chr1\tRefSeq\tCDS\t10\t50\t.\t+\t0\tID=cds1;Parent=gene1;locus_tag=LT001;protein_id=p1
+"
+        );
+    }
+
+    #[test]
+    fn direct_exon_gets_synthetic_rna_like_agat() {
+        let gff = "\
+chr1\tRefSeq\tgene\t1\t100\t.\t+\t.\tID=gene2;locus_tag=LT003
+chr1\tRefSeq\texon\t10\t40\t.\t+\t.\tID=ex1;Parent=gene2;locus_tag=LT003
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tRefSeq\tgene\t10\t40\t.\t+\t.\tID=agat-gene-1;locus_tag=LT003
+chr1\tAGAT\tRNA\t10\t40\t.\t+\t.\tID=gene2;Parent=agat-gene-1;locus_tag=LT003
+chr1\tRefSeq\texon\t10\t40\t.\t+\t.\tID=ex1;Parent=gene2;locus_tag=LT003
 "
         );
     }

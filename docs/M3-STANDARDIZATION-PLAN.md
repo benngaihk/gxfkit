@@ -46,12 +46,12 @@ The engine should make AGAT-standardization decisions explicit and testable:
    safety behavior as `gff2gtf`, including gzip input and no-overwrite output.
 4. [x] Build the first GFF3 writer around the existing ordered attributes model.
 5. [ ] Add fixtures for:
-   - gene or pseudogene with direct CDS child;
-   - gene with direct exon/UTR/codon children;
+   - [x] gene or pseudogene with direct CDS child;
+   - [ ] gene with direct exon/UTR/codon children;
    - missing transcript parent with multiple CDS fragments;
    - FlyBase-style transposable-element locus;
    - orphan child and malformed Parent cases that AGAT tolerates.
-6. Compare fixture output against AGAT's `agat_convert_sp_gxf2gxf.pl` or the
+6. [x] Compare fixture output against AGAT's `agat_convert_sp_gxf2gxf.pl` or the
    equivalent pinned AGAT standardization path, then record every divergence in
    `docs/PARITY.md`.
 

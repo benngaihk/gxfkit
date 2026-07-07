@@ -94,6 +94,8 @@ jobs:
         run: bash corpus/download.sh core
       - name: Build benchmark image
         run: docker build --platform linux/amd64 -f benchmark/Dockerfile -t gxfkit-bench .
+      - name: Check gxf2gxf fixture parity
+        run: GXF2GXF_SKIP_DOCKER_BUILD=1 bash benchmark/run-gxf2gxf.sh
       - name: Produce AGAT + gxfkit outputs
         run: |
           mkdir -p benchmark/results
@@ -119,3 +121,6 @@ jobs:
           path: |
             benchmark/results/summary.tsv
             benchmark/results/residuals/*.txt
+            benchmark/gxf2gxf-results/*.diff
+            benchmark/gxf2gxf-results/*.log
+            benchmark/gxf2gxf-results/*.err

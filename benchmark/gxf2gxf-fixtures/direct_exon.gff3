@@ -1,0 +1,3 @@
+##gff-version 3
+chr1	RefSeq	gene	1	100	.	+	.	ID=gene2;locus_tag=LT003
+chr1	RefSeq	exon	10	40	.	+	.	ID=ex1;Parent=gene2;locus_tag=LT003

@@ -17,6 +17,7 @@ grep -F "bash scripts/test-release-artifacts.sh" "$workflow" >/dev/null
 grep -F "python3 scripts/check-release-artifacts.py" "$workflow" >/dev/null
 grep -F "bash scripts/test-github-source-sha256.sh" "$workflow" >/dev/null
 grep -F "MIN_PARITY=100 python benchmark/summarize.py benchmark/results tests/parity/normalize.py" "$workflow" >/dev/null
+grep -F "GXF2GXF_SKIP_DOCKER_BUILD=1 bash benchmark/run-gxf2gxf.sh" "$workflow" >/dev/null
 if grep -Fx "      - run: python3 scripts/check-version-consistency.py" "$workflow" >/dev/null; then
   echo "CI must not require full Cargo/Bioconda version sync during staged release prep" >&2
   exit 1
@@ -76,6 +77,7 @@ assert not any(run == "python3 scripts/check-version-consistency.py" for run in 
 parity_steps = data["jobs"]["parity"]["steps"]
 parity_runs = [step.get("run", "") for step in parity_steps if isinstance(step, dict)]
 assert any("MIN_PARITY=100 python benchmark/summarize.py" in run for run in parity_runs)
+assert any("GXF2GXF_SKIP_DOCKER_BUILD=1 bash benchmark/run-gxf2gxf.sh" in run for run in parity_runs)
 assert any("check-benchmark-summary.py --require" in run for run in parity_runs)
 assert any("test-benchmark-summary.sh" in run for run in runs)
 assert any("test-parity-doc.sh" in run for run in runs)
