@@ -103,6 +103,8 @@ def main() -> int:
         "`confirm` is exactly `publish`",
         "CARGO_REGISTRY_TOKEN",
         "verifies that the secret is configured before the expensive publish preflight starts",
+        "Treat that release tag as the Crates.io source of truth",
+        "do not publish an already-tagged public version from a newer branch or SHA",
         "cargo publish -p gxfkit-core --registry crates-io",
         "cargo publish -p gxfkit --registry crates-io",
         "VERSION=X.Y.Z bash scripts/verify-crates-install.sh",
@@ -170,6 +172,7 @@ def main() -> int:
 
     forbid(text, "MIN_PARITY=98", errors)
     forbid(text, "for example 0.0.1", errors)
+    forbid(text, "if that tag does not exist yet, set `source_ref` explicitly", errors)
 
     if errors:
         for error in errors:

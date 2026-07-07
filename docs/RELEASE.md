@@ -154,8 +154,9 @@ It first validates that the requested version looks like `X.Y.Z`, that
 exactly `publish`, before checking out the publish ref. It requires a repository
 secret named `CARGO_REGISTRY_TOKEN` and verifies that the secret is configured
 before the expensive publish preflight starts. By default it checks out
-`vX.Y.Z` for the requested version; if that tag does not exist yet, set
-`source_ref` explicitly to the branch or SHA you intend to publish from.
+`vX.Y.Z` for the requested version. Treat that release tag as the Crates.io
+source of truth; do not publish an already-tagged public version from a newer
+branch or SHA.
 The workflow verifies the Cargo package versions against the requested publish version, runs
 fmt/clippy/tests plus a release build and local
 `cargo install --locked --path` smoke test, runs the release-archive,

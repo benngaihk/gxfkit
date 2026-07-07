@@ -11,7 +11,7 @@ test -f "$workflow"
 grep -F "name: Publish Crates.io" "$workflow" >/dev/null
 grep -F "workflow_dispatch:" "$workflow" >/dev/null
 grep -F "source_ref:" "$workflow" >/dev/null
-grep -F "defaults to v<version>" "$workflow" >/dev/null
+grep -F "Release tag to publish from; defaults to v<version>" "$workflow" >/dev/null
 grep -F "PUBLISH_REF: \${{ inputs.source_ref || format('v{0}', inputs.version) }}" "$workflow" >/dev/null
 grep -F "ref: \${{ env.PUBLISH_REF }}" "$workflow" >/dev/null
 grep -F "group: publish-crates-\${{ inputs.version }}" "$workflow" >/dev/null

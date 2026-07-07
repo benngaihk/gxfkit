@@ -17,7 +17,7 @@ on:
           - gxfkit-core
           - gxfkit
       source_ref:
-        description: "Git ref to publish from; defaults to v<version>"
+        description: "Release tag to publish from; defaults to v<version>"
         required: false
         default: ""
         type: string
