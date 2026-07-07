@@ -2,9 +2,9 @@
 
 [English](README.md) | 简体中文
 
-> `gxfkit` 是一个用 Rust 实现的高速 GFF3/GTF 工具集，目标是兼容
-> [AGAT](https://github.com/NBISweden/AGAT) 中最常用、最耗时的一部分命令：
-> 输入方式尽量一致，输出以 AGAT 为正确性基准，但运行更快、内存更省。
+> `gxfkit` 是一个用 Rust 实现的高速 GFF3/GTF 工具集，覆盖部分
+> [AGAT](https://github.com/NBISweden/AGAT) 兼容工作流：生产支持的
+> `gff2gtf`，以及 `main` 上的 `gxf2gxf` 标准化 beta。
 
 `gxfkit` 目前聚焦在基因组注释流程里非常常见的 GFF3/GTF 转换场景，尤其是
 `agat_convert_sp_gff2gtf.pl` 的替代路径。它不是 AGAT 的完整重写，而是一个
@@ -13,9 +13,10 @@
 AGAT 仍然是本项目的正确性基准。`gxfkit` 的每个输出差异都应该被修复，或者在
 [docs/PARITY.md](docs/PARITY.md) 中记录清楚。
 
-> **当前状态：alpha。** 目前主要支持 `gff2gtf` 一个子命令；在核心语料
->（人类 chr1、人类 chr21、酵母）上，经过顺序无关的标准化比较后与 AGAT 100%
-> 一致。当前重点是打包、发布和扩大兼容范围。
+> **当前状态：alpha。** 生产支持路径是 `gff2gtf`；在核心语料（人类 chr1、
+> 人类 chr21、酵母）上，经过顺序无关的标准化比较后与 AGAT 100% 一致。
+> `main` 还包含 `gxf2gxf` 标准化 beta：fixture 级别对齐 AGAT 1.7.0，并有
+> 大语料残差账本；它还不是完整 AGAT 替代品。
 
 ---
 
@@ -29,6 +30,11 @@ AGAT 仍然是本项目的正确性基准。`gxfkit` 的每个输出差异都应
 - **更容易塞进流程：** CLI 参数尽量贴近 AGAT 的常用脚本。
 - **更重视可验证：** benchmark 和 parity harness 都在仓库里，可以一键复现。
 - **不夸大兼容性：** 支持范围、已知差异和路线图公开记录。
+- **可以试用下一步：** `main` 上已有 `gxf2gxf` 标准化 beta，适合拿真实 GFF3
+  文件做兼容性反馈。
+
+对外推广文案和节奏见
+[docs/SOFT-LAUNCH-M3-BETA.md](docs/SOFT-LAUNCH-M3-BETA.md)。
 
 ---
 
@@ -79,6 +85,12 @@ cargo build --release
 ./target/release/gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
 ```
 
+如果要试用 `main` 上尚未发布的 `gxf2gxf` 标准化 beta：
+
+```bash
+cargo install --git https://github.com/benngaihk/gxfkit gxfkit
+```
+
 ### Bioconda
 
 ```bash
@@ -93,7 +105,7 @@ conda install -c conda-forge -c bioconda gxfkit
 当前公开的 Crates.io 包是 `0.0.2`：
 
 ```bash
-cargo install gxfkit
+cargo install gxfkit --version 0.0.2
 ```
 
 Crates.io 已通过干净安装、smoke 转换和拒绝覆盖验证；严格公开审计已经把
@@ -155,6 +167,20 @@ gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
 
 `-i` 和 `--input` 也可以作为输入参数别名，方便接入已有流程。
 
+### `gxf2gxf` 标准化 beta
+
+`gxf2gxf` 是 M3 标准化引擎入口，目前覆盖第一批 AGAT 验证切片：标准 GFF3 写回、
+父节点坐标修复、RefSeq 风格直接子层级补全，以及 FlyBase TE、orphan/self-parent
+等 fixture 场景。更大的语料差异记录在
+[docs/GXF2GXF-PARITY.md](docs/GXF2GXF-PARITY.md)。
+
+```text
+gxfkit gxf2gxf [-g <input.gff[.gz]>] [-o <output.gff>] [--sanitize]
+  -g, --gff, --gxf <FILE>  输入 GFF3 文件，可为普通文本或 gzip，默认 stdin
+  -o, --output <FILE>      输出 GFF3 文件；拒绝覆盖已有文件，默认 stdout
+  --sanitize               跳过格式错误的数据行，并把诊断写到 stderr
+```
+
 ---
 
 ## 正确性如何保证
@@ -176,11 +202,12 @@ issue，并尽量附上最小可复现片段。
 - 已经在流程中使用 `agat_convert_sp_gff2gtf.pl`，想降低运行时间。
 - 需要处理较大的 Ensembl 风格 GFF3/GTF 注释文件。
 - 愿意在正式替换前先跑 parity 检查的流程工程师或生信分析人员。
+- 想用真实 GFF3 文件帮助测试 `gxf2gxf` 标准化 beta 的 AGAT 用户。
 
 暂不建议直接替换：
 
 - 强依赖 AGAT 全量命令矩阵的流程。
-- 主要处理 NCBI RefSeq 式不完整层级并要求 AGAT 标准化行为的流程。
+- 主要处理复杂不完整层级、并要求 AGAT 全量标准化行为的流程。
 - 不能接受 alpha 阶段工具的生产环境。
 
 ---

@@ -2,9 +2,10 @@
 
 English | [简体中文](README.zh-CN.md)
 
-> A fast, AGAT-compatible Rust implementation of [AGAT](https://github.com/NBISweden/AGAT)'s
-> most-used GTF/GFF operations. AGAT-compatible output on the verified core
-> corpus, much faster, with portable release binaries.
+> A fast Rust toolkit for selected
+> [AGAT](https://github.com/NBISweden/AGAT)-compatible GFF/GTF operations:
+> production-supported `gff2gtf`, a standardization beta for `gxf2gxf`, and
+> portable release binaries.
 
 `gxfkit` is a small, focused toolkit for the handful of GFF3/GTF operations that
 sit on nearly every genome-annotation pipeline's critical path. It aims to be a
@@ -17,10 +18,29 @@ and gxfkit treats its output as the gold standard.
 
 > **Status: alpha.** The production-supported path is `gff2gtf`, byte-identical
 > to AGAT after normalization on the core corpus (human chr1, human chr21,
-> yeast) — with a reproducible benchmark + parity harness. `main` also carries
-> an experimental first `gxf2gxf` standardization slice for M3; it is fixture
-> tested, but not yet a full AGAT replacement.
+> yeast) -- with a reproducible benchmark + parity harness. `main` also carries
+> a `gxf2gxf` standardization beta: fixture-gated against AGAT 1.7.0, with a
+> documented large-corpus residual ledger. It is not yet a full AGAT
+> replacement.
 > See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+---
+
+## Why try it now?
+
+- `gff2gtf` is the release-grade path: AGAT 1.7.0 is the correctness oracle,
+  and the gated core corpus is 100% normalize-identical.
+- The public `0.0.2` package is installable from GitHub Releases, Bioconda, and
+  Crates.io.
+- `gxf2gxf` is available on `main` as a standardization beta for users who want
+  to test the next large compatibility slice against their own GFF3 files.
+- Every accepted divergence is documented in
+  [docs/PARITY.md](docs/PARITY.md) or
+  [docs/GXF2GXF-PARITY.md](docs/GXF2GXF-PARITY.md), so adoption can be based on
+  reproducible evidence rather than broad compatibility claims.
+
+Maintainer launch copy lives in
+[docs/SOFT-LAUNCH-M3-BETA.md](docs/SOFT-LAUNCH-M3-BETA.md).
 
 ---
 
@@ -81,7 +101,7 @@ future releases with no-overwrite and core-corpus parity enabled by default.
 The current public Crates.io package is `0.0.2`:
 
 ```bash
-cargo install gxfkit
+cargo install gxfkit --version 0.0.2
 ```
 
 Crates.io has passed clean install, smoke conversion, and no-overwrite
@@ -103,6 +123,12 @@ treating all public channels as strict-audit production evidence.
 ```bash
 cargo build --release
 ./target/release/gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
+```
+
+To try the unreleased `gxf2gxf` standardization beta from `main`:
+
+```bash
+cargo install --git https://github.com/benngaihk/gxfkit gxfkit
 ```
 
 Planned distribution after the first source release: Python bindings
@@ -160,7 +186,7 @@ gxfkit:
 gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
 ```
 
-### `gxf2gxf` experimental
+### `gxf2gxf` standardization beta
 
 `gxf2gxf` is the M3 standardization-engine entry point. It currently covers the
 first AGAT-verified slice: standard GFF3 write-back, parent coordinate repair,
@@ -201,10 +227,10 @@ See [docs/FAQ.md](docs/FAQ.md) for gzip, parity, and pipeline notes.
 ```
 crates/gxfkit-core/   parsing, model, conversions (library)
 crates/gxfkit/        CLI binary
-corpus/               download.sh — pinned public GFF3 test data
-benchmark/            Dockerfile + run.sh + write-residuals.sh — reproducible benchmark
-tests/parity/         normalize.py + residual_summary.py — parity diagnostics
-docs/                 DESIGN, PARITY, ROADMAP
+corpus/               download.sh -- pinned public GFF3 test data
+benchmark/            Dockerfile + run.sh + write-residuals.sh -- reproducible benchmark
+tests/parity/         normalize.py + residual_summary.py -- parity diagnostics
+docs/                 DESIGN, PARITY, GXF2GXF-PARITY, ROADMAP, launch materials
 ```
 
 ## License

@@ -10,8 +10,8 @@
 - 已经在使用 AGAT，尤其是 `agat_convert_sp_gff2gtf.pl` 的用户。
 - 需要处理大 GFF3/GTF 文件，并愿意用 AGAT parity 验证替换风险的用户。
 
-不要把 `gxfkit` 宣传成 AGAT 的完整替代品。当前定位是：**AGAT 兼容的高速子集，先从
-`gff2gtf` 做稳。**
+不要把 `gxfkit` 宣传成 AGAT 的完整替代品。当前定位是：**AGAT 兼容的高速子集，
+生产路径是 `gff2gtf`，`main` 上的 `gxf2gxf` 是标准化 beta。**
 
 ## 中文内容入口
 
@@ -30,18 +30,19 @@
 推荐使用这些表达：
 
 - “AGAT 是正确性基准。”
-- “当前 alpha 阶段主要支持 `gff2gtf`。”
+- “当前 alpha 阶段的生产支持路径是 `gff2gtf`。”
 - “在核心语料（人类 chr1、人类 chr21、酵母）上，标准化后与 AGAT 100% 一致。”
+- “`gxf2gxf` 标准化 beta 已在 `main` 上 fixture-gated，但还不是完整 AGAT 替代品。”
 - “已知差异记录在 `docs/PARITY.md`。”
-- “Bioconda 和 GitHub Release 已可安装；Crates.io/PyPI 未发布前不要写成已可用。”
-- “公开 `v0.0.1` 包仍会覆盖已有输出文件；当前源码和下一版公开包才有拒绝覆盖保护。”
+- “GitHub Release、Bioconda 和 Crates.io 的 `0.0.2` 已通过公开安装审计。”
+- “当前公开稳定包是 `0.0.2`；`main` 上的 beta 功能需要从源码或 git 安装。”
 
 避免使用这些表达：
 
 - “完全替代 AGAT。”
 - “所有 GFF/GTF 都兼容。”
 - “无风险替换生产流程。”
-- “Crates.io/PyPI 已可安装”，除非对应发布和安装 smoke 已经验证。
+- “PyPI 已可安装”，除非对应发布和安装 smoke 已经验证。
 
 ## Issue 维护建议
 
@@ -71,6 +72,7 @@
 - `gxfkit：一个以 AGAT 输出为基准的高速 GFF/GTF 工具`
 - `如何用 AGAT parity 检查替换风险`
 - `在 Snakemake/Nextflow/HPC 中试用 gxfkit`
+- `gxf2gxf 标准化 beta：邀请真实 GFF3 兼容性反馈`
 
 每篇内容都应该包含：
 
