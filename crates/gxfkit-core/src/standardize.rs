@@ -86,6 +86,7 @@ struct Layout {
     children: Vec<Vec<usize>>,
     roots: Vec<usize>,
     coords: Vec<(u64, u64)>,
+    skip_record: Vec<bool>,
     gene_id_override: Vec<Option<String>>,
     parent_override: Vec<Option<String>>,
     synthetic_tx: Vec<Option<SyntheticTranscriptPlan>>,
@@ -113,6 +114,9 @@ fn compute_layout(records: &[Record]) -> Layout {
     let mut parent_override = vec![None; n];
     let mut synthetic_tx = vec![None; n];
     let mut synthetic_exon_id = vec![None; n];
+    let mut synthetic_exon_needed = vec![false; n];
+    let mut skip_record = vec![false; n];
+    let mut coords: Vec<(u64, u64)> = records.iter().map(|r| (r.start, r.end)).collect();
 
     for parent in 0..n {
         if !is_gene_like(&records[parent].feature_type) {
@@ -153,12 +157,25 @@ fn compute_layout(records: &[Record]) -> Layout {
                 if !has_direct_exon_child
                     && !records[child].feature_type.eq_ignore_ascii_case("exon")
                 {
-                    synthetic_exon_id[child] =
-                        Some(next_agat_id(&mut counters, &mut used_ids, "exon"));
+                    synthetic_exon_needed[child] = true;
                 }
             } else if records[child].parent() == Some(source_gene_id.as_str()) {
                 parent_override[child] = Some(new_gene_id.clone());
             }
+        }
+    }
+
+    merge_adjacent_direct_cds(
+        records,
+        &children,
+        &mut coords,
+        &mut synthetic_exon_needed,
+        &mut skip_record,
+    );
+
+    for child in 0..n {
+        if synthetic_exon_needed[child] {
+            synthetic_exon_id[child] = Some(next_agat_id(&mut counters, &mut used_ids, "exon"));
         }
     }
 
@@ -178,7 +195,6 @@ fn compute_layout(records: &[Record]) -> Layout {
         });
     }
 
-    let mut coords: Vec<(u64, u64)> = records.iter().map(|r| (r.start, r.end)).collect();
     let mut visiting = vec![false; n];
     let mut visited = vec![false; n];
     for i in 0..n {
@@ -208,11 +224,63 @@ fn compute_layout(records: &[Record]) -> Layout {
         children,
         roots,
         coords,
+        skip_record,
         gene_id_override,
         parent_override,
         synthetic_tx,
         synthetic_exon_id,
     }
+}
+
+fn merge_adjacent_direct_cds(
+    records: &[Record],
+    children: &[Vec<usize>],
+    coords: &mut [(u64, u64)],
+    synthetic_exon_needed: &mut [bool],
+    skip_record: &mut [bool],
+) {
+    for kids in children {
+        let mut cds_children: Vec<usize> = kids
+            .iter()
+            .copied()
+            .filter(|&child| {
+                synthetic_exon_needed[child]
+                    && records[child].feature_type.eq_ignore_ascii_case("CDS")
+            })
+            .collect();
+        cds_children.sort_by(|&a, &b| {
+            records[a]
+                .id()
+                .unwrap_or("")
+                .cmp(records[b].id().unwrap_or(""))
+                .then(records[a].start.cmp(&records[b].start))
+                .then(records[a].end.cmp(&records[b].end))
+                .then(a.cmp(&b))
+        });
+
+        let mut kept: Vec<usize> = Vec::new();
+        for child in cds_children {
+            if let Some(&last) = kept.last() {
+                let same_group = same_direct_cds_group(&records[last], &records[child]);
+                if same_group && records[child].start <= coords[last].1.saturating_add(1) {
+                    coords[last].0 = coords[last].0.min(records[child].start);
+                    coords[last].1 = coords[last].1.max(records[child].end);
+                    synthetic_exon_needed[child] = false;
+                    skip_record[child] = true;
+                    continue;
+                }
+            }
+            kept.push(child);
+        }
+    }
+}
+
+fn same_direct_cds_group(a: &Record, b: &Record) -> bool {
+    a.seqid == b.seqid
+        && a.strand == b.strand
+        && a.id().is_some()
+        && a.id() == b.id()
+        && a.parent() == b.parent()
 }
 
 fn shrink_to_child_span(
@@ -271,6 +339,10 @@ fn emit_tree(
     emitted: &mut [bool],
     out: &mut impl Write,
 ) -> std::io::Result<()> {
+    if layout.skip_record[i] {
+        emitted[i] = true;
+        return Ok(());
+    }
     if emitted[i] {
         return Ok(());
     }
@@ -512,6 +584,48 @@ chr1\tRefSeq\tgene\t10\t50\t.\t+\t.\tID=agat-gene-1;locus_tag=LT001
 chr1\tAGAT\tmRNA\t10\t50\t.\t+\t.\tID=gene1;Parent=agat-gene-1;locus_tag=LT001;protein_id=p1
 chr1\tAGAT\texon\t10\t50\t.\t+\t.\tID=agat-exon-1;Parent=gene1;locus_tag=LT001;protein_id=p1
 chr1\tRefSeq\tCDS\t10\t50\t.\t+\t0\tID=cds1;Parent=gene1;locus_tag=LT001;protein_id=p1
+"
+        );
+    }
+
+    #[test]
+    fn split_direct_cds_fragments_get_split_synthetic_exons() {
+        let gff = "\
+chr1\tRefSeq\tgene\t1\t200\t.\t+\t.\tID=geneFrag;locus_tag=LTF
+chr1\tRefSeq\tCDS\t10\t20\t.\t+\t0\tID=cdsFrag;Parent=geneFrag;protein_id=pFrag;locus_tag=LTF
+chr1\tRefSeq\tCDS\t50\t70\t.\t+\t2\tID=cdsFrag;Parent=geneFrag;protein_id=pFrag;locus_tag=LTF
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tRefSeq\tgene\t10\t70\t.\t+\t.\tID=agat-gene-1;locus_tag=LTF
+chr1\tAGAT\tmRNA\t10\t70\t.\t+\t.\tID=geneFrag;Parent=agat-gene-1;locus_tag=LTF;protein_id=pFrag
+chr1\tAGAT\texon\t10\t20\t.\t+\t.\tID=agat-exon-1;Parent=geneFrag;locus_tag=LTF;protein_id=pFrag
+chr1\tAGAT\texon\t50\t70\t.\t+\t.\tID=agat-exon-2;Parent=geneFrag;locus_tag=LTF;protein_id=pFrag
+chr1\tRefSeq\tCDS\t10\t20\t.\t+\t0\tID=cdsFrag;Parent=geneFrag;locus_tag=LTF;protein_id=pFrag
+chr1\tRefSeq\tCDS\t50\t70\t.\t+\t2\tID=cdsFrag;Parent=geneFrag;locus_tag=LTF;protein_id=pFrag
+"
+        );
+    }
+
+    #[test]
+    fn adjacent_direct_cds_fragments_are_merged_like_agat() {
+        let gff = "\
+chr1\tRefSeq\tgene\t1\t200\t.\t+\t.\tID=geneAdj;locus_tag=LTA
+chr1\tRefSeq\tCDS\t10\t20\t.\t+\t0\tID=cdsAdj;Parent=geneAdj;protein_id=pAdj;locus_tag=LTA
+chr1\tRefSeq\tCDS\t21\t40\t.\t+\t2\tID=cdsAdj;Parent=geneAdj;protein_id=pAdj;locus_tag=LTA
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tRefSeq\tgene\t10\t40\t.\t+\t.\tID=agat-gene-1;locus_tag=LTA
+chr1\tAGAT\tmRNA\t10\t40\t.\t+\t.\tID=geneAdj;Parent=agat-gene-1;locus_tag=LTA;protein_id=pAdj
+chr1\tAGAT\texon\t10\t40\t.\t+\t.\tID=agat-exon-1;Parent=geneAdj;locus_tag=LTA;protein_id=pAdj
+chr1\tRefSeq\tCDS\t10\t40\t.\t+\t0\tID=cdsAdj;Parent=geneAdj;locus_tag=LTA;protein_id=pAdj
 "
         );
     }

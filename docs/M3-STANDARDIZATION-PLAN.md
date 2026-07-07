@@ -48,7 +48,7 @@ The engine should make AGAT-standardization decisions explicit and testable:
 5. [ ] Add fixtures for:
    - [x] gene or pseudogene with direct CDS child;
    - [x] gene with direct exon/UTR/codon children;
-   - missing transcript parent with multiple CDS fragments;
+   - [x] missing transcript parent with multiple CDS fragments;
    - FlyBase-style transposable-element locus;
    - orphan child and malformed Parent cases that AGAT tolerates.
 6. [x] Compare fixture output against AGAT's `agat_convert_sp_gxf2gxf.pl` or the

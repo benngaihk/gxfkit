@@ -1,0 +1,4 @@
+##gff-version 3
+chr1	RefSeq	gene	1	200	.	+	.	ID=geneAdj;locus_tag=LTA
+chr1	RefSeq	CDS	10	20	.	+	0	ID=cdsAdj;Parent=geneAdj;protein_id=pAdj;locus_tag=LTA
+chr1	RefSeq	CDS	21	40	.	+	2	ID=cdsAdj;Parent=geneAdj;protein_id=pAdj;locus_tag=LTA

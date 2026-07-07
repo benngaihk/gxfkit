@@ -1,0 +1,4 @@
+##gff-version 3
+chr1	RefSeq	gene	1	200	.	+	.	ID=geneFrag;locus_tag=LTF
+chr1	RefSeq	CDS	10	20	.	+	0	ID=cdsFrag;Parent=geneFrag;protein_id=pFrag;locus_tag=LTF
+chr1	RefSeq	CDS	50	70	.	+	2	ID=cdsFrag;Parent=geneFrag;protein_id=pFrag;locus_tag=LTF
