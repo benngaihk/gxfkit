@@ -164,7 +164,8 @@ gxfkit gff2gtf -g annotation.gff3 -o annotation.gtf
 
 `gxf2gxf` is the M3 standardization-engine entry point. It currently covers the
 first AGAT-verified slice: standard GFF3 write-back, parent coordinate repair,
-and RefSeq-style direct-CDS hierarchy completion with synthetic mRNA/exon rows.
+and RefSeq-style direct-child hierarchy completion for CDS, exon, UTR, and
+codon rows with AGAT-compatible synthetic transcript/exon rows where observed.
 Broader AGAT standardization remains tracked in
 [docs/M3-STANDARDIZATION-PLAN.md](docs/M3-STANDARDIZATION-PLAN.md) and
 [issue #4](https://github.com/benngaihk/gxfkit/issues/4).

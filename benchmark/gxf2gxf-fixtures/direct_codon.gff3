@@ -1,0 +1,4 @@
+##gff-version 3
+chr1	RefSeq	gene	1	100	.	+	.	ID=geneC;locus_tag=LTC
+chr1	RefSeq	start_codon	10	12	.	+	0	ID=start1;Parent=geneC;locus_tag=LTC
+chr1	RefSeq	stop_codon	88	90	.	+	0	ID=stop1;Parent=geneC;locus_tag=LTC

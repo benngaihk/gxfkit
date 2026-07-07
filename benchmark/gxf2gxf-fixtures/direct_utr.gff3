@@ -1,0 +1,4 @@
+##gff-version 3
+chr1	RefSeq	gene	1	100	.	+	.	ID=geneU;locus_tag=LTU
+chr1	RefSeq	five_prime_UTR	10	20	.	+	.	ID=utr5;Parent=geneU;locus_tag=LTU
+chr1	RefSeq	three_prime_UTR	80	90	.	+	.	ID=utr3;Parent=geneU;locus_tag=LTU

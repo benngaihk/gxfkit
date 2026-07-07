@@ -130,6 +130,9 @@ fn compute_layout(records: &[Record]) -> Layout {
 
         let new_gene_id = next_agat_id(&mut counters, &mut used_ids, &records[parent].feature_type);
         gene_id_override[parent] = Some(new_gene_id.clone());
+        let has_direct_exon_child = children[parent]
+            .iter()
+            .any(|&child| records[child].feature_type.eq_ignore_ascii_case("exon"));
         synthetic_tx[parent] = Some(SyntheticTranscriptPlan {
             gene_id: new_gene_id.clone(),
             transcript_id: source_gene_id.clone(),
@@ -147,7 +150,9 @@ fn compute_layout(records: &[Record]) -> Layout {
         for &child in &children[parent] {
             if needs_transcript_parent(&records[child].feature_type) {
                 parent_override[child] = Some(source_gene_id.clone());
-                if records[child].feature_type.eq_ignore_ascii_case("CDS") {
+                if !has_direct_exon_child
+                    && !records[child].feature_type.eq_ignore_ascii_case("exon")
+                {
                     synthetic_exon_id[child] =
                         Some(next_agat_id(&mut counters, &mut used_ids, "exon"));
                 }
@@ -303,6 +308,9 @@ fn emit_tree(
                 layout.coords[child],
             )?;
         }
+    }
+
+    for &child in &layout.children[i] {
         emit_tree(child, records, layout, emitted, out)?;
     }
     Ok(())
@@ -522,6 +530,50 @@ chr1\tRefSeq\texon\t10\t40\t.\t+\t.\tID=ex1;Parent=gene2;locus_tag=LT003
 chr1\tRefSeq\tgene\t10\t40\t.\t+\t.\tID=agat-gene-1;locus_tag=LT003
 chr1\tAGAT\tRNA\t10\t40\t.\t+\t.\tID=gene2;Parent=agat-gene-1;locus_tag=LT003
 chr1\tRefSeq\texon\t10\t40\t.\t+\t.\tID=ex1;Parent=gene2;locus_tag=LT003
+"
+        );
+    }
+
+    #[test]
+    fn direct_utr_children_get_synthetic_exons_without_natural_exon() {
+        let gff = "\
+chr1\tRefSeq\tgene\t1\t100\t.\t+\t.\tID=geneU;locus_tag=LTU
+chr1\tRefSeq\tfive_prime_UTR\t10\t20\t.\t+\t.\tID=utr5;Parent=geneU;locus_tag=LTU
+chr1\tRefSeq\tthree_prime_UTR\t80\t90\t.\t+\t.\tID=utr3;Parent=geneU;locus_tag=LTU
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tRefSeq\tgene\t10\t90\t.\t+\t.\tID=agat-gene-1;locus_tag=LTU
+chr1\tAGAT\tRNA\t10\t90\t.\t+\t.\tID=geneU;Parent=agat-gene-1;locus_tag=LTU
+chr1\tAGAT\texon\t10\t20\t.\t+\t.\tID=agat-exon-1;Parent=geneU;locus_tag=LTU
+chr1\tAGAT\texon\t80\t90\t.\t+\t.\tID=agat-exon-2;Parent=geneU;locus_tag=LTU
+chr1\tRefSeq\tfive_prime_UTR\t10\t20\t.\t+\t.\tID=utr5;Parent=geneU;locus_tag=LTU
+chr1\tRefSeq\tthree_prime_UTR\t80\t90\t.\t+\t.\tID=utr3;Parent=geneU;locus_tag=LTU
+"
+        );
+    }
+
+    #[test]
+    fn direct_codon_children_get_synthetic_exons_without_natural_exon() {
+        let gff = "\
+chr1\tRefSeq\tgene\t1\t100\t.\t+\t.\tID=geneC;locus_tag=LTC
+chr1\tRefSeq\tstart_codon\t10\t12\t.\t+\t0\tID=start1;Parent=geneC;locus_tag=LTC
+chr1\tRefSeq\tstop_codon\t88\t90\t.\t+\t0\tID=stop1;Parent=geneC;locus_tag=LTC
+";
+        let out = standardize(gff);
+        assert_eq!(
+            out,
+            "\
+##gff-version 3
+chr1\tRefSeq\tgene\t10\t90\t.\t+\t.\tID=agat-gene-1;locus_tag=LTC
+chr1\tAGAT\tRNA\t10\t90\t.\t+\t.\tID=geneC;Parent=agat-gene-1;locus_tag=LTC
+chr1\tAGAT\texon\t10\t12\t.\t+\t.\tID=agat-exon-1;Parent=geneC;locus_tag=LTC
+chr1\tAGAT\texon\t88\t90\t.\t+\t.\tID=agat-exon-2;Parent=geneC;locus_tag=LTC
+chr1\tRefSeq\tstart_codon\t10\t12\t.\t+\t0\tID=start1;Parent=geneC;locus_tag=LTC
+chr1\tRefSeq\tstop_codon\t88\t90\t.\t+\t0\tID=stop1;Parent=geneC;locus_tag=LTC
 "
         );
     }

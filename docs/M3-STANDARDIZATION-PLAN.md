@@ -47,7 +47,7 @@ The engine should make AGAT-standardization decisions explicit and testable:
 4. [x] Build the first GFF3 writer around the existing ordered attributes model.
 5. [ ] Add fixtures for:
    - [x] gene or pseudogene with direct CDS child;
-   - [ ] gene with direct exon/UTR/codon children;
+   - [x] gene with direct exon/UTR/codon children;
    - missing transcript parent with multiple CDS fragments;
    - FlyBase-style transposable-element locus;
    - orphan child and malformed Parent cases that AGAT tolerates.

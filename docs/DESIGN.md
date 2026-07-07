@@ -61,11 +61,12 @@ exon, UTR, and transposable-element IDs.
 ## gxf2gxf standardization (`standardize.rs`)
 M3 starts with a deliberately small, testable standardization module. It writes
 GFF3, shrinks parent coordinates to child spans like AGAT, and covers the first
-AGAT-observed hierarchy completion slice: a gene/pseudogene with direct CDS-like
-children gets a renamed `agat-<type>-N` parent, a synthetic `AGAT mRNA` carrying
-the original gene ID, synthetic exon rows for direct CDS children, and rewritten
-child `Parent` links. This is not the full AGAT parser yet; broader
-standardization remains tracked in [M3-STANDARDIZATION-PLAN.md](M3-STANDARDIZATION-PLAN.md).
+AGAT-observed hierarchy completion slice: a gene/pseudogene with direct
+CDS/exon/UTR/codon children gets a renamed `agat-<type>-N` parent, a synthetic
+`AGAT mRNA` or `AGAT RNA` carrying the original gene ID, AGAT-compatible
+synthetic exon rows where observed, and rewritten child `Parent` links. This is
+not the full AGAT parser yet; broader standardization remains tracked in
+[M3-STANDARDIZATION-PLAN.md](M3-STANDARDIZATION-PLAN.md).
 
 ## Performance posture
 - Release profile: `lto=thin`, `codegen-units=1`, `panic=abort`.
