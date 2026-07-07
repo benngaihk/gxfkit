@@ -761,6 +761,8 @@ JSON
     if [ "$crate_mode" = forbidden-core ]; then
       echo "curl: (56) The requested URL returned error: 403" >&2
       exit 56
+    elif [ "$crate_mode" = missing-core ] || [ "$crate_mode" = missing-both ]; then
+      printf '{"versions":[]}\n'
     else
       printf '{"versions":[{"num":"1.2.3","yanked":false,"checksum":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","crate_size":123456}]}\n'
     fi
@@ -769,6 +771,8 @@ JSON
     if [ "$crate_mode" = forbidden-gxfkit ]; then
       echo "curl: (56) The requested URL returned error: 403" >&2
       exit 56
+    elif [ "$crate_mode" = missing-gxfkit ] || [ "$crate_mode" = missing-both ]; then
+      printf '{"versions":[]}\n'
     elif [ "$crate_mode" = yanked-gxfkit ]; then
       printf '{"versions":[{"num":"1.2.3","yanked":true,"checksum":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","crate_size":234567}]}\n'
     elif [ "$crate_mode" = invalid-gxfkit ]; then
@@ -788,6 +792,32 @@ JSON
 esac
 SH
 chmod +x "$fake_api_bin/curl"
+cat >"$fake_api_bin/gh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "$#" -ge 5 ] \
+  && [ "$1" = secret ] \
+  && [ "$2" = list ] \
+  && [ "$3" = --repo ] \
+  && [ "$5" = --json ]; then
+  case "${GXFKIT_FAKE_GH_SECRET:-missing}" in
+    present)
+      printf '[{"name":"CARGO_REGISTRY_TOKEN","updatedAt":"2026-07-07T00:00:00Z"}]\n'
+      ;;
+    fail)
+      echo "not authenticated" >&2
+      exit 1
+      ;;
+    *)
+      printf '[]\n'
+      ;;
+  esac
+  exit 0
+fi
+echo "unexpected gh invocation: $*" >&2
+exit 2
+SH
+chmod +x "$fake_api_bin/gh"
 
 fixture="$tmp/public-channels-complete"
 make_fixture "$fixture" 1.2.3
@@ -806,6 +836,31 @@ grep -F "PASS    Bioconda package files: main linux-64 and osx-64 build 0 packag
   "$tmp/public-channels-complete.out" >/dev/null
 grep -F "PASS    Crates.io gxfkit-core: 1.2.3 is available with checksum and non-zero crate size" "$tmp/public-channels-complete.out" >/dev/null
 grep -F "PASS    Crates.io gxfkit: 1.2.3 is available with checksum and non-zero crate size" "$tmp/public-channels-complete.out" >/dev/null
+
+fixture="$tmp/public-channels-missing-crates-no-credentials"
+make_fixture "$fixture" 1.2.3
+mkdir -p "$tmp/empty-cargo-home"
+expect_fail \
+  public-channels-missing-crates-no-credentials \
+  "PENDING Crates.io publish credentials: missing CARGO_REGISTRY_TOKEN environment variable and Cargo credentials file; CARGO_REGISTRY_TOKEN repository secret is not configured" \
+  env -u CARGO_REGISTRY_TOKEN CARGO_HOME="$tmp/empty-cargo-home" GXFKIT_ROOT="$fixture" \
+    GXFKIT_FAKE_CRATES=missing-both PATH="$fake_api_bin:$PATH" \
+    "$PY" "$ROOT/scripts/release-readiness.py" --phase public --check-public
+grep -F "PENDING Crates.io gxfkit-core: 1.2.3 is not available" \
+  "$tmp/public-channels-missing-crates-no-credentials.out" >/dev/null
+grep -F "PENDING Crates.io gxfkit: 1.2.3 is not available" \
+  "$tmp/public-channels-missing-crates-no-credentials.out" >/dev/null
+
+fixture="$tmp/public-channels-missing-core-with-repo-secret"
+make_fixture "$fixture" 1.2.3
+expect_fail \
+  public-channels-missing-core-with-repo-secret \
+  "PASS    Crates.io publish credentials: CARGO_REGISTRY_TOKEN repository secret is configured (updated 2026-07-07T00:00:00Z)" \
+  env -u CARGO_REGISTRY_TOKEN CARGO_HOME="$tmp/empty-cargo-home" GXFKIT_ROOT="$fixture" \
+    GXFKIT_FAKE_CRATES=missing-core GXFKIT_FAKE_GH_SECRET=present PATH="$fake_api_bin:$PATH" \
+    "$PY" "$ROOT/scripts/release-readiness.py" --phase public --check-public
+grep -F "PENDING Crates.io gxfkit-core: 1.2.3 is not available" \
+  "$tmp/public-channels-missing-core-with-repo-secret.out" >/dev/null
 
 fixture="$tmp/public-channels-multiple-bioconda-builds"
 make_fixture "$fixture" 1.2.3

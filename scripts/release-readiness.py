@@ -462,6 +462,56 @@ def public_crate_state(crate: str, version: str) -> tuple[str, str]:
     return ("missing", f"{version} is not available")
 
 
+def cargo_credentials_files() -> list[Path]:
+    cargo_home = Path(os.environ.get("CARGO_HOME", Path.home() / ".cargo"))
+    return [
+        cargo_home / "credentials.toml",
+        cargo_home / "credentials",
+    ]
+
+
+def repository_has_crates_secret() -> tuple[bool | None, str]:
+    if not shutil.which("gh"):
+        return (None, "gh is not available to inspect repository secrets")
+
+    proc = run(["gh", "secret", "list", "--repo", REPO, "--json", "name,updatedAt"])
+    if proc.returncode != 0:
+        return (None, detail_tail(proc.stdout + proc.stderr, proc.returncode))
+    try:
+        secrets = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        return (None, f"gh secret list returned invalid JSON: {exc}")
+    if not isinstance(secrets, list):
+        return (None, f"gh secret list returned unexpected payload: {secrets!r}")
+    for item in secrets:
+        if isinstance(item, dict) and item.get("name") == "CARGO_REGISTRY_TOKEN":
+            updated_at = item.get("updatedAt")
+            suffix = f" (updated {updated_at})" if isinstance(updated_at, str) and updated_at else ""
+            return (True, f"CARGO_REGISTRY_TOKEN repository secret is configured{suffix}")
+    return (False, "CARGO_REGISTRY_TOKEN repository secret is not configured")
+
+
+def check_crates_publish_credentials() -> Result:
+    if os.environ.get("CARGO_REGISTRY_TOKEN"):
+        return result("PASS", "Crates.io publish credentials", "CARGO_REGISTRY_TOKEN is present in the environment")
+
+    credential_files = [path for path in cargo_credentials_files() if path.is_file()]
+    if credential_files:
+        joined = ", ".join(str(path) for path in credential_files)
+        return result("PASS", "Crates.io publish credentials", f"Cargo credentials file exists: {joined}")
+
+    has_secret, secret_detail = repository_has_crates_secret()
+    if has_secret is True:
+        return result("PASS", "Crates.io publish credentials", secret_detail)
+
+    detail = "missing CARGO_REGISTRY_TOKEN environment variable and Cargo credentials file"
+    if has_secret is False:
+        detail += f"; {secret_detail}"
+    else:
+        detail += f"; repository secret could not be verified: {secret_detail}"
+    return result("PENDING", "Crates.io publish credentials", detail)
+
+
 def missing_public_resource(exc: Exception) -> bool:
     text = str(exc)
     return "404" in text or "Not Found" in text
@@ -780,6 +830,7 @@ def check_public_channels(version: str, tag: str) -> list[Result]:
         else:
             checks.append(result("FAIL", "Bioconda package metadata", f"check failed: {exc}"))
 
+    missing_crates = False
     for crate in ("gxfkit-core", "gxfkit"):
         try:
             crate_state, crate_detail = public_crate_state(crate, version)
@@ -788,19 +839,25 @@ def check_public_channels(version: str, tag: str) -> list[Result]:
             elif crate_state in {"yanked", "invalid"}:
                 checks.append(result("FAIL", f"Crates.io {crate}", crate_detail))
             else:
+                missing_crates = True
                 checks.append(result("PENDING", f"Crates.io {crate}", crate_detail))
         except urllib.error.HTTPError as exc:
             detail = pending_public_resource_detail(f"{crate} {version}", exc)
             if detail is not None:
+                missing_crates = True
                 checks.append(result("PENDING", f"Crates.io {crate}", f"{detail} ({exc.code})"))
             else:
                 checks.append(result("FAIL", f"Crates.io {crate}", f"check failed: {exc}"))
         except Exception as exc:  # noqa: BLE001
             detail = pending_public_resource_detail(f"{crate} {version}", exc)
             if detail is not None:
+                missing_crates = True
                 checks.append(result("PENDING", f"Crates.io {crate}", detail))
             else:
                 checks.append(result("FAIL", f"Crates.io {crate}", f"check failed: {exc}"))
+
+    if missing_crates:
+        checks.append(check_crates_publish_credentials())
 
     return checks
 
