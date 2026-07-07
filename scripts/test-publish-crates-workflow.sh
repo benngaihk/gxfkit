@@ -25,48 +25,16 @@ grep -F "CARGO_REGISTRY_TOKEN: \${{ secrets.CARGO_REGISTRY_TOKEN }}" "$workflow"
 grep -F "Verify Crates.io token" "$workflow" >/dev/null
 grep -F 'if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then' "$workflow" >/dev/null
 grep -F "CARGO_REGISTRY_TOKEN repository secret is required to publish to Crates.io." "$workflow" >/dev/null
+grep -F "Fetch release automation helpers" "$workflow" >/dev/null
+grep -F "GXFKIT_RELEASE_TOOLS=" "$workflow" >/dev/null
+grep -F 'git fetch --no-tags --depth=1 origin "$GITHUB_SHA"' "$workflow" >/dev/null
+grep -F 'git show "$GITHUB_SHA:scripts/$helper"' "$workflow" >/dev/null
 grep -F "VERSION=\"\${EXPECTED_VERSION}\" bash scripts/check-publish-ref.sh" "$workflow" >/dev/null
 grep -F "Verify Crates.io publish state" "$workflow" >/dev/null
-grep -F "bash scripts/check-crates-publish-state.sh \"\${EXPECTED_VERSION}\" \"\${{ inputs.crate }}\"" "$workflow" >/dev/null
-grep -F "python3 scripts/check-version-consistency.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-crate-metadata.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-crate-metadata.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-release-artifacts.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-release-artifacts.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-github-source-sha256.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-release-readiness.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-release-evidence.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-local-cargo-install-verifier.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-maintainer-surfaces.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-maintainer-surfaces.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-shell-syntax.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/test-python-syntax.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-release-check.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-release-check.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-release-check-log.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-repo-hygiene.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-executable-scripts.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-public-audit-log.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-release-notes.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-release-notes.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-install-docs.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-install-docs.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-release-doc.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-release-doc.py" "$workflow" >/dev/null
-grep -F -- "--scope cargo" "$workflow" >/dev/null
-grep -F -- "--expected-version \"\$EXPECTED_VERSION\"" "$workflow" >/dev/null
-grep -F "bash scripts/test-publish-crates-workflow.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-workflow-policy.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-workflow-policy.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-check-crates-publish-state.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-trigger-crates-publish.sh" "$workflow" >/dev/null
-grep -F "bash scripts/test-benchmark-summary.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-benchmark-summary.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-parity-doc.sh" "$workflow" >/dev/null
-grep -F "python3 scripts/check-parity-doc.py" "$workflow" >/dev/null
-grep -F "bash scripts/test-package-files.sh" "$workflow" >/dev/null
-grep -F "PACKAGE_FILES_ALLOW_DIRTY=0 bash scripts/check-package-files.sh" "$workflow" >/dev/null
-grep -F "cargo package -p gxfkit-core --locked --registry crates-io" "$workflow" >/dev/null
+grep -F 'bash "$GXFKIT_RELEASE_TOOLS/scripts/check-crates-publish-state.sh"' "$workflow" >/dev/null
+grep -F "RELEASE_CHECK_VERSION_SCOPE=cargo" "$workflow" >/dev/null
+grep -F "RELEASE_CHECK_PACKAGE_NETWORK=1" "$workflow" >/dev/null
+grep -F "bash scripts/release-check.sh" "$workflow" >/dev/null
 grep -F "cargo publish -p gxfkit-core --locked --registry crates-io" "$workflow" >/dev/null
 grep -F "inputs.crate == 'both' || inputs.crate == 'gxfkit-core' || inputs.crate == 'gxfkit'" \
   "$workflow" >/dev/null
@@ -74,7 +42,7 @@ grep -F "cargo search gxfkit-core --registry crates-io --limit 5" "$workflow" >/
 grep -F "cargo package -p gxfkit --locked --registry crates-io" "$workflow" >/dev/null
 grep -F "cargo publish -p gxfkit --locked --registry crates-io" "$workflow" >/dev/null
 grep -F "cargo search gxfkit --registry crates-io --limit 5" "$workflow" >/dev/null
-grep -F "VERSION=\"\${EXPECTED_VERSION}\" bash scripts/verify-crates-install.sh" "$workflow" >/dev/null
+grep -F 'bash "$GXFKIT_RELEASE_TOOLS/scripts/verify-crates-install.sh"' "$workflow" >/dev/null
 
 python3 - <<'PY'
 from pathlib import Path
@@ -109,6 +77,7 @@ assert checkout["uses"] == "actions/checkout@v7"
 assert checkout["with"]["ref"] == "${{ env.PUBLISH_REF }}"
 assert "Verify publish inputs" in names
 assert "Verify Crates.io token" in names
+assert "Fetch release automation helpers" in names
 assert "Verify workspace crate versions" in names
 assert "Verify publish ref" in names
 assert "Verify Crates.io publish state" in names
@@ -124,57 +93,24 @@ input_run = next(run for run in runs if "Workspace version must look like X.Y.Z"
 assert 'CONFIRM" != "publish"' in input_run
 assert "Publish ref must be non-empty and contain no whitespace" in input_run
 assert "exit 1" in input_run
-preflight = next(run for run in runs if "cargo fmt --all --check" in run)
-state_check = next(run for run in runs if "check-crates-publish-state.sh" in run)
-assert 'bash scripts/check-crates-publish-state.sh "${EXPECTED_VERSION}" "${{ inputs.crate }}"' in state_check
+helpers = next(run for run in runs if "GXFKIT_RELEASE_TOOLS" in run)
+assert 'git fetch --no-tags --depth=1 origin "$GITHUB_SHA"' in helpers
+assert "check-crates-publish-state.sh" in helpers
+assert "verify-crates-install.sh" in helpers
+assert 'git show "$GITHUB_SHA:scripts/$helper"' in helpers
+preflight = next(run for run in runs if "bash scripts/release-check.sh" in run)
+state_check = next(
+    run
+    for run in runs
+    if "GXFKIT_RELEASE_TOOLS/scripts/check-crates-publish-state.sh" in run
+)
+assert 'bash "$GXFKIT_RELEASE_TOOLS/scripts/check-crates-publish-state.sh"' in state_check
+assert '"${EXPECTED_VERSION}"' in state_check
+assert '"${{ inputs.crate }}"' in state_check
 for required in [
-    "cargo clippy --locked --all-targets -- -D warnings",
-    "cargo test --all --locked",
-    "cargo build --release --locked --bin gxfkit",
-    "bash scripts/verify-local-cargo-install.sh",
-    "bash scripts/test-local-cargo-install-verifier.sh",
-    "bash scripts/test-crate-metadata.sh",
-    "python3 scripts/check-crate-metadata.py",
-    "bash scripts/test-release-artifacts.sh",
-    "python3 scripts/check-release-artifacts.py",
-    "bash scripts/test-public-install-audit-workflow.sh",
-    "bash scripts/test-ci-workflow.sh",
-    "bash scripts/test-release-workflow.sh",
-    "bash scripts/test-publish-crates-workflow.sh",
-    "bash scripts/test-workflow-policy.sh",
-    "python3 scripts/check-workflow-policy.py",
-    "bash scripts/test-check-crates-publish-state.sh",
-    "bash scripts/test-trigger-crates-publish.sh",
-    "bash scripts/test-github-source-sha256.sh",
-    "bash scripts/test-version-consistency.sh",
-    "bash scripts/test-release-readiness.sh",
-    "bash scripts/test-release-evidence.sh",
-    "bash scripts/test-maintainer-surfaces.sh",
-    "python3 scripts/check-maintainer-surfaces.py",
-    "bash scripts/test-shell-syntax.sh",
-    "python3 scripts/test-python-syntax.py",
-    "bash scripts/test-release-check.sh",
-    "python3 scripts/check-release-check.py",
-    "bash scripts/test-release-check-log.sh",
-    "bash scripts/test-repo-hygiene.sh",
-    "bash scripts/test-executable-scripts.sh",
-    "bash scripts/test-public-audit-log.sh",
-    "bash scripts/test-release-notes.sh",
-    "python3 scripts/check-release-notes.py",
-    "bash scripts/test-install-docs.sh",
-    "python3 scripts/check-install-docs.py",
-    "bash scripts/test-release-doc.sh",
-    "python3 scripts/check-release-doc.py",
-    "bash scripts/test-benchmark-summary.sh",
-    "python3 scripts/check-benchmark-summary.py",
-    "bash scripts/test-parity-doc.sh",
-    "python3 scripts/check-parity-doc.py",
-    "bash scripts/test-package-files.sh",
-    "PACKAGE_FILES_ALLOW_DIRTY=0 bash scripts/check-package-files.sh",
-    "python3 scripts/check-version-consistency.py",
-    "--scope cargo",
-    "--expected-version \"$EXPECTED_VERSION\"",
-    "cargo package -p gxfkit-core --locked --registry crates-io",
+    "RELEASE_CHECK_VERSION_SCOPE=cargo",
+    "RELEASE_CHECK_PACKAGE_NETWORK=1",
+    "bash scripts/release-check.sh",
 ]:
     assert required in preflight, required
 
@@ -214,16 +150,29 @@ assert "cargo search gxfkit " in step_by_name[
     "Wait for gxfkit registry visibility"
 ]["run"]
 assert "verify-crates-install.sh" in step_by_name["Verify Crates.io install"]["run"]
+assert (
+    'bash "$GXFKIT_RELEASE_TOOLS/scripts/verify-crates-install.sh"'
+    in step_by_name["Verify Crates.io install"]["run"]
+)
 
 ordered_names = [
     step.get("name")
     for step in steps
     if isinstance(step, dict) and step.get("name")
 ]
+full_name_index = {
+    step.get("name"): index
+    for index, step in enumerate(steps)
+    if isinstance(step, dict) and step.get("name")
+}
 assert ordered_names.index("Verify publish inputs") < ordered_names.index(
     "Verify Crates.io token"
 )
-assert ordered_names.index("Verify Crates.io token") < checkout_index
+assert full_name_index["Verify Crates.io token"] < checkout_index
+assert checkout_index < full_name_index["Fetch release automation helpers"]
+assert full_name_index["Fetch release automation helpers"] < full_name_index[
+    "Verify workspace crate versions"
+]
 assert ordered_names.index("Verify Crates.io token") < ordered_names.index(
     "Verify workspace crate versions"
 )

@@ -84,6 +84,21 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
 
+      - name: Fetch release automation helpers
+        run: |
+          set -euo pipefail
+          helper_root="$RUNNER_TEMP/gxfkit-release-tools"
+          mkdir -p "$helper_root/scripts"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          for helper in \
+            check-crates-publish-state.sh \
+            verify-crates-install.sh
+          do
+            git show "$GITHUB_SHA:scripts/$helper" >"$helper_root/scripts/$helper"
+            chmod +x "$helper_root/scripts/$helper"
+          done
+          printf 'GXFKIT_RELEASE_TOOLS=%s\n' "$helper_root" >>"$GITHUB_ENV"
+
       - name: Verify workspace crate versions
         run: |
           set -euo pipefail
@@ -124,73 +139,16 @@ jobs:
       - name: Verify Crates.io publish state
         run: |
           set -euo pipefail
-          bash scripts/check-crates-publish-state.sh "${EXPECTED_VERSION}" "${{ inputs.crate }}"
+          bash "$GXFKIT_RELEASE_TOOLS/scripts/check-crates-publish-state.sh" \
+            "${EXPECTED_VERSION}" \
+            "${{ inputs.crate }}"
 
       - name: Run publish preflight
         run: |
           set -euo pipefail
-          cargo fmt --all --check
-          cargo clippy --locked --all-targets -- -D warnings
-          cargo test --all --locked
-          cargo build --release --locked --bin gxfkit
-          bash scripts/verify-local-cargo-install.sh
-          bash scripts/test-local-cargo-install-verifier.sh
-          bash scripts/test-crates-install-verifier.sh
-          bash scripts/test-crate-metadata.sh
-          python3 scripts/check-crate-metadata.py
-          bash scripts/test-release-archive-verifier.sh
-          bash scripts/test-release-artifacts.sh
-          python3 scripts/check-release-artifacts.py
-          bash scripts/test-github-release-verifier.sh
-          bash scripts/test-github-release-parity.sh
-          python3 scripts/check-bioconda-recipe.py
-          bash scripts/test-bioconda-recipe.sh
-          bash scripts/test-github-source-sha256.sh
-          bash scripts/test-bioconda-install-verifier.sh
-          bash scripts/test-public-installs-verifier.sh
-          bash scripts/test-public-audit-log.sh
-          bash scripts/test-shell-syntax.sh
-          python3 scripts/test-python-syntax.py
-          bash scripts/test-release-check.sh
-          python3 scripts/check-release-check.py
-          bash scripts/test-release-check-log.sh
-          bash scripts/test-repo-hygiene.sh
-          bash scripts/test-executable-scripts.sh
-          bash scripts/test-public-install-audit-workflow.sh
-          bash scripts/test-ci-workflow.sh
-          bash scripts/test-release-workflow.sh
-          bash scripts/test-publish-crates-workflow.sh
-          bash scripts/test-workflow-policy.sh
-          python3 scripts/check-workflow-policy.py
-          bash scripts/test-publish-ref.sh
-          bash scripts/test-check-crates-publish-state.sh
-          bash scripts/test-trigger-crates-publish.sh
-          bash scripts/test-benchmark-summarize.sh
-          bash scripts/test-benchmark-summary.sh
-          python3 scripts/check-benchmark-summary.py
-          bash scripts/test-parity-doc.sh
-          python3 scripts/check-parity-doc.py
-          bash scripts/test-write-residuals.sh
-          bash scripts/test-version-consistency.sh
-          bash scripts/test-prepare-next-version.sh
-          python3 scripts/check-version-consistency.py \
-            --scope cargo \
-            --expected-version "$EXPECTED_VERSION"
-          bash scripts/test-release-status-doc.sh
-          python3 scripts/check-release-status-doc.py
-          bash scripts/test-install-docs.sh
-          python3 scripts/check-install-docs.py
-          bash scripts/test-release-doc.sh
-          python3 scripts/check-release-doc.py
-          bash scripts/test-release-notes.sh
-          python3 scripts/check-release-notes.py
-          bash scripts/test-release-readiness.sh
-          bash scripts/test-release-evidence.sh
-          bash scripts/test-maintainer-surfaces.sh
-          python3 scripts/check-maintainer-surfaces.py
-          bash scripts/test-package-files.sh
-          PACKAGE_FILES_ALLOW_DIRTY=0 bash scripts/check-package-files.sh
-          cargo package -p gxfkit-core --locked --registry crates-io
+          RELEASE_CHECK_VERSION_SCOPE=cargo \
+          RELEASE_CHECK_PACKAGE_NETWORK=1 \
+            bash scripts/release-check.sh
 
       - name: Publish gxfkit-core
         if: ${{ inputs.crate == 'both' || inputs.crate == 'gxfkit-core' }}
@@ -240,4 +198,7 @@ jobs:
 
       - name: Verify Crates.io install
         if: ${{ inputs.crate == 'both' || inputs.crate == 'gxfkit' }}
-        run: VERSION="${EXPECTED_VERSION}" bash scripts/verify-crates-install.sh
+        run: |
+          set -euo pipefail
+          VERSION="${EXPECTED_VERSION}" \
+            bash "$GXFKIT_RELEASE_TOOLS/scripts/verify-crates-install.sh"
