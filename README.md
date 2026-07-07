@@ -170,7 +170,7 @@ plus the first FlyBase-style transposable-element locus fixture and orphan/self-
 parent child fixtures for missing or malformed `Parent` links.
 Broader AGAT standardization remains tracked in
 [docs/M3-STANDARDIZATION-PLAN.md](docs/M3-STANDARDIZATION-PLAN.md) and
-[issue #4](https://github.com/benngaihk/gxfkit/issues/4).
+[docs/GXF2GXF-PARITY.md](docs/GXF2GXF-PARITY.md).
 
 ```text
 gxfkit gxf2gxf [-g <input.gff[.gz]>] [-o <output.gff>] [--sanitize]

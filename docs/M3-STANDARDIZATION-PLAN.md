@@ -66,7 +66,8 @@ M3's first gate is not "all AGAT tools"; it is a credible reusable engine:
 - A pinned AGAT-vs-gxfkit `gxf2gxf` fixture harness exists in CI.
 - The common RefSeq direct-child standardization fixtures match AGAT.
 - Any Drosophila or large-corpus residuals are summarized with
-  `tests/parity/residual_summary.py` or an equivalent GFF3 residual helper.
+  `tests/parity/gff3_residual_summary.py` in
+  [GXF2GXF-PARITY.md](GXF2GXF-PARITY.md).
 - `docs/PARITY.md` distinguishes fixed gaps from accepted or open divergences.
 
 ## Useful commands

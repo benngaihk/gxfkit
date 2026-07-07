@@ -3,6 +3,9 @@
 **Baseline:** AGAT `1.7.0` (biocontainer `quay.io/biocontainers/agat:1.7.0--pl5321hdfd78af_0`).
 **Subcommand:** `gff2gtf` (`agat_convert_sp_gff2gtf.pl`, default `--gtf_version relax`).
 
+For the experimental M3 `gxf2gxf` standardization ledger, see
+[GXF2GXF-PARITY.md](GXF2GXF-PARITY.md).
+
 Parity is measured by running both tools on every corpus file, passing each
 output through `tests/parity/normalize.py` (order- and whitespace-insensitive,
 but value-preserving), and diffing. The reported percentage is a symmetric

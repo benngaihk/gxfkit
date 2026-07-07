@@ -84,8 +84,9 @@ children with missing or irregular intermediate levels, AGAT synthesizes and
 normalizes the hierarchy. This is what makes AGAT valuable ("it eats any messy
 GFF") and unblocks `gxf2gxf` + most other tools.
 - [ ] `gxf2gxf` standardization (GFF3→standardized GFF3) ([#4](https://github.com/benngaihk/gxfkit/issues/4);
-      entry plan: [M3-STANDARDIZATION-PLAN.md](M3-STANDARDIZATION-PLAN.md)); the engine that
-      synthesizes missing parents / completes the gene→transcript→exon hierarchy
+      entry plan: [M3-STANDARDIZATION-PLAN.md](M3-STANDARDIZATION-PLAN.md),
+      corpus ledger: [GXF2GXF-PARITY.md](GXF2GXF-PARITY.md)); beta fixture slice
+      is CI-gated, but full corpus AGAT compatibility remains open
 - [ ] Reproduce AGAT's large-corpus synthetic counter ordering (DIV-4) for
       rewritten exon/UTR/TE IDs — structural TE remodeling is implemented and
       closes yeast; Drosophila remains divergent on counter values

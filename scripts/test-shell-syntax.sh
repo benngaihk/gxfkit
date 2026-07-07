@@ -13,6 +13,7 @@ done < <(
     -path ./target -prune -o \
     -path ./benchmark/results -prune -o \
     -path ./benchmark/gxf2gxf-results -prune -o \
+    -path ./benchmark/gxf2gxf-corpus-results -prune -o \
     -path ./corpus/raw -prune -o \
     -type f -name '*.sh' -print | sort
 )

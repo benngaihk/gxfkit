@@ -28,6 +28,7 @@ for path in \
   .pytest_cache/v/cache/nodeids \
   .ruff_cache/0.9.0/cache \
   dist/gxfkit-v0.0.2-linux-x86_64-static.tar.gz \
+  benchmark/gxf2gxf-corpus-results/summary.tsv \
   release-evidence.md \
   public-audit.log
 do
